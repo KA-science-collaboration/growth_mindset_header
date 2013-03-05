@@ -1,3 +1,12 @@
+# temporary files
+*~
+\#*\#
+
+# raw data files
+*.csv
+*.gz
+*.zip
+
 *.py[cod]
 
 # C extensions
