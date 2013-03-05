@@ -89,11 +89,6 @@ def process_user(rows, options):
 
     # mark the problems done pre-intervention
     cols['pre'] = (cols['time_done'] < intervention_time)
-
-    ind_pre = nonzero(cols['time_pre']<0)[0]
-    ind_post = nonzero(cols['time_pre']>=0)[0]
-    pre_time = mean(log(cols['time_taken'][ind_pre]))
-    post_time = mean(log(cols['time_taken'][ind_post]))
     
     # and output the aggregated info for the user
     if options.mode=='student':
