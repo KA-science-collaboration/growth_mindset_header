@@ -49,51 +49,97 @@ class FieldIndexer:
         for i, field in enumerate(field_names):
             self.__dict__[field] = i
 
-fields_input = ['experiment', 'alternative', 'identity', 'exercise', 'problem_type', 'seed', 'problem_number', 'time_done', 'topic_mode', 'correct', 'user_id', 'proficiency', 'count_hints', 'time_taken', 'dt']
+fields_input = ['experiment', 'alternative', 'identity', 'num_coaches', 'max_coach_students', 'time_done', 'dt', 'exercise', 'problem_type', 'seed', 'problem_number', 'topic_mode', 'review_mode', 'correct', 'proficiency', 'hints', 'time_taken']
 idx = FieldIndexer(fields_input)
 
 # split on tab, ',', or \x01 so it works in Hive or via pipes on local machine
 linesplit = re.compile('[,\t\x01]')
 
+# separator character
+sep = ',' # "\t"
+
+def print_header(options):
+    if sep != ',':
+        # no headers in Hive
+        return
+
+    if options.mode=='student':
+        print 'experiment', 'alternative', 'identity', 'num_coaches', 'max_coach_students', 
+        attributes = ['num', 'correct', 'proficiencies', 'hints', 'median_time', 'review']
+        subsets = ['pre', 'post', 'post_frac', 'post_other']
+        for s in subsets:
+            for a in attributes:
+                print "%s_%s, "%(a, s),
+        print
+
 def process_user(rows, options):
     N = len(rows)
 
-    # and split it up into the different components
+    # and split it up into the different columns
     cols = {}
     for field in fields_input:
         cols[field] = np.asarray([row[idx[field]] for row in rows])
 
     cols['exposed'] = np.asarray([ex in target_exercises for ex in cols['exercise']])
-    
-    inds = nonzero(cols['exposed'])[0]
-    if len(inds) == 0:
-        cols['time_post'] = zeros((N))
-        cols['time_pre'] = zeros((N))
-        cols['dt_post'] = zeros((N))
-        cols['dt_pre'] = zeros((N))
-    else:
-        cols['time_post'] = cols['time_done'] - max(cols['time_done'][inds])
-        cols['time_pre'] = cols['time_done'] - min(cols['time_done'][inds])
-        cols['dt_post'] = cols['dt'] - max(cols['dt'][inds])
-        cols['dt_pre'] = cols['dt'] - min(cols['dt'][inds])
+    # skip users for whom we don't have an exposure time
+    if sum(cols['exposed']) == 0:
+        return
+
+    intervention_time = np.min(cols['time_done'][cols['exposed']])
+
+    # mark the problems done pre-intervention
+    cols['pre'] = (cols['time_done'] < intervention_time)
 
     ind_pre = nonzero(cols['time_pre']<0)[0]
     ind_post = nonzero(cols['time_pre']>=0)[0]
     pre_time = mean(log(cols['time_taken'][ind_pre]))
     post_time = mean(log(cols['time_taken'][ind_post]))
     
+    # and output the aggregated info for the user
     if options.mode=='student':
-        print cols['experiment'][0], "\t",
-        print cols['alternative'][0], "\t",
-        print cols['identity'][0], "\t",
-        print pre_time, "\t", post_time, "\t",
-        print pre_correct, "\t", post_correct, "\t",
-        print pre_num, "\t", post_num, "\t",
-    elif options.mode=='problem':
-        for i in range(N):
-            print 
+        print cols['experiment'][0], sep,
+        print cols['alternative'][0], sep,
+        print cols['identity'][0], sep,
+        print cols['num_coaches'][0], sep,
+        print cols['max_coach_students'][0], sep,
+
+        attributes = ['num', 'correct', 'proficiencies', 'hints', 'median_time', 'review']
+        subsets = ['pre', 'post', 'post_frac', 'post_other']
+
+        for s in subsets:
+            if s == 'pre':
+                inds = np.nonzero(cols['pre'])[0]
+            elif s == 'post':
+                inds = np.nonzero(~cols['pre'])[0]
+            elif s == 'post_frac':
+                inds = np.nonzero(~cols['pre'] & cols['exposed'])[0]
+            elif s == 'post_other':
+                inds = np.nonzero(~cols['pre'] & ~cols['exposed'])[0]
+            for a in attributes:
+                if inds.shape[0] == 0:
+                    # there's no data for this condition
+                    print sep,
+                    continue
+                if a == 'num':
+                    val = inds.shape[0]
+                elif a == 'correct':
+                    val = np.sum(cols['correct'][inds])
+                elif a == 'proficiencies':
+                    val = np.sum(cols['proficiency'][inds])
+                elif a == 'hints':
+                    val = np.sum(cols['hints'][inds])
+                elif a == 'median_time':
+                    val = np.median(cols['time_taken'][inds])
+                elif a == 'review':
+                    val = np.sum(cols['review_mode'][inds])
+                else:
+                    print "invalid output column type"
+
+                print val, sep,
+
+        print        
     else:
-        print "invalid mode"
+        print "processing mode not supported yet"
 
 
 def get_cmd_line_args():
@@ -101,7 +147,7 @@ def get_cmd_line_args():
         usage="%prog [options]",
         description="Calculates some per user info for an experiment, and outputs it with different degrees of reduction.")
     parser.add_option("-m", "--mode",
-        help="student = one row per student, problem = one row per problem",
+        help="student = one row per student, problem = one row per problem, date = one row per experiment-relative date",
         default="student")
     options, _ = parser.parse_args()
     return options
@@ -110,6 +156,10 @@ def get_cmd_line_args():
 def main():
     options = get_cmd_line_args()
     rows = []
+
+    print_header(options)
+
+    # accumulate lines, and then call process_user once per user
     for line in sys.stdin:
         row = linesplit.split( line )
 
@@ -123,6 +173,7 @@ def main():
             lines = []     
         oldkey = newkey
         rows.append(row)
+    process_user(lines, options)
 
 
 if __name__ == '__main__':
