@@ -46,6 +46,7 @@ target_exercises = [
   ]
 
 
+# to access input columns
 class FieldIndexer(dict):
     def __init__(self, field_names):
         for i, field in enumerate(field_names):
@@ -55,6 +56,7 @@ class FieldIndexer(dict):
 fields_input = ['experiment', 'alternative', 'identity', 'num_coaches', 'max_coach_students', 'time_done', 'dt', 'exercise', 'problem_type', 'seed', 'problem_number', 'topic_mode', 'review_mode', 'correct', 'proficiency', 'hints', 'time_taken']
 idx = FieldIndexer(fields_input)
 
+
 # split on tab, ',', or \x01 so it works in Hive or via pipes on local machine
 linesplit = re.compile('[,\t\x01]')
 
@@ -63,7 +65,7 @@ sep = ',' # "\t"
 
 
 # the attributes to look at
-attributes = ['num', 'correct', 'proficiencies', 'hints', 'median_time', 'review']
+attributes = ['num', 'correct', 'proficiencies', 'hints', 'median_time', 'review', 'irt_difficulty']
 # the subsets of the data for which to look at each of these attributes
 # pre -- before intervention
 # post -- after intervention
@@ -71,12 +73,18 @@ attributes = ['num', 'correct', 'proficiencies', 'hints', 'median_time', 'review
 # post_other -- post intervention, only the non-target exercises
 subsets = ['pre', 'post', 'post_frac', 'post_other']
 
+# load the parameters from an IRT model so that we can look at average exercise difficulty
+def generate_exercise_ind():
+    """ this function because I stupidly saved the mIRT exercise lookup as a default dict, which needs a function of this name """
+    pass
+irt = np.load('mirt_data/mirt_file=user_assessment.responses_abilities=1_epoch=1919.npz')
+irt_ex_ind = dict(irt['exercise_ind_dict'][()])
+irt_couplings = irt['couplings'][()]
 
 def print_header(options):
     if sep != ',':
         # no headers in Hive
         return
-
     if options.mode=='student':
         print 'experiment, alternative, identity, num_coaches, max_coach_students', 
         for s in subsets:
@@ -87,7 +95,7 @@ def print_header(options):
 def process_user(rows, options):
     N = len(rows)
 
-    # and split it up into the different columns
+    # split data into the different columns
     cols = {}
     for field in fields_input:
         cols[field] = np.asarray([row[idx[field]] for row in rows])
@@ -104,6 +112,19 @@ def process_user(rows, options):
     cols['review_mode'] = cols['review_mode'].astype(bool)
     cols['topic_mode'] = cols['topic_mode'].astype(bool)
     cols['hints'] = cols['hints'].astype(int)
+
+    # look up the difficulty for each of the exercises
+    cols['irt_difficulty'] = np.zeros(cols['exercise'].shape)
+    for ii, ex in enumerate(cols['exercise']):
+        #print irt['exercise_ind_dict']
+        #print ex
+        try:
+            ind = irt_ex_ind[ex]
+        except KeyError:
+            #print ex
+            cols['irt_difficulty'][ii] = np.nan
+            continue
+        cols['irt_difficulty'][ii] = irt_couplings[ind,-1]
 
     aa = cols['time_done']
     bb = cols['exposed']
@@ -137,15 +158,19 @@ def process_user(rows, options):
                 if a == 'num':
                     val = inds.shape[0]
                 elif a == 'correct':
-                    val = np.sum(cols['correct'][inds])
+                    val = np.mean(cols['correct'][inds])
                 elif a == 'proficiencies':
-                    val = np.sum(cols['proficiency'][inds])
+                    val = np.mean(cols['proficiency'][inds])
                 elif a == 'hints':
-                    val = np.sum(cols['hints'][inds])
+                    val = np.mean(cols['hints'][inds])
                 elif a == 'median_time':
                     val = np.median(cols['time_taken'][inds])
                 elif a == 'review':
-                    val = np.sum(cols['review_mode'][inds])
+                    val = np.mean(cols['review_mode'][inds])
+                elif a == 'irt_difficulty':
+                    xx = cols['irt_difficulty'][inds]
+                    # nansum to ignore exercises we don't know the difficulty of
+                    val = np.nansum(xx)/sum(np.isfinite(xx))
                 else:
                     print "invalid output column type"
 
