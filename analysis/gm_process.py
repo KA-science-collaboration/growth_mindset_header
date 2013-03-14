@@ -91,6 +91,7 @@ def print_header(options):
         for s in subsets:
             for a in attributes:
                 sys.stdout.write( ",%s_%s"%(a, s) )
+        sys.stdout.write(',intervention_time')
         sys.stdout.write("\n")
 
 def process_user(rows, options):
@@ -129,7 +130,10 @@ def process_user(rows, options):
 
     aa = cols['time_done']
     bb = cols['exposed']
-    intervention_time = np.min(aa[bb])
+    if sum(bb) > 0:
+        intervention_time = np.min(aa[bb])
+    else:
+        intervention_time = -1
 
     # mark the problems done pre-intervention
     cols['pre'] = (cols['time_done'] < intervention_time)
@@ -177,6 +181,7 @@ def process_user(rows, options):
 
                 sys.stdout.write( sep + str(val) )
 
+        sys.stdout.write( sep + str(intervention_time) )    
         sys.stdout.write( "\n" )       
     else:
         print >>sys.stderr,"processing mode not supported yet"
