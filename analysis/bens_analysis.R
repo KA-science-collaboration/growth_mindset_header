@@ -960,6 +960,29 @@
 		y=data$a_proficiency[!data$condition == 'mindset']
 	)
 	r$p.value  # 0.023
+
+	# With start time
+	r <- wilcox.test(
+		x=data$a_proficiency[
+			data$condition == 'mindset' &
+			data$intervention_time != 0
+		],
+		y=data$a_proficiency[
+			!data$condition == 'mindset' &
+			data$intervention_time != 0
+		]
+	)
+	r$p.value  # 0.061
+	
+	
+	# Total Proficiencies
+	p <- data$a_proficiency + data$p_proficiency
+	r <- wilcox.test(
+		x=p[data$condition == 'mindset'],
+		y=p[!data$condition == 'mindset']
+	)
+	r$p.value  # 0.048	
+	
 	
 	# Permutation
 	cond <- data$condition == 'mindset'
@@ -1247,7 +1270,261 @@
 	# will do.
 	
 		
-histogram(data$a_proficiency)
-histogram(log(data$a_proficiency + 0.0001))
-histogram(data$a_proficiency + runif(nrow(data), 0, 1))
-histogram(log(data$a_proficiency + runif(nrow(data), 0, 1)))
+###################################################################
+# 
+# Mo Data, Mo Problems
+# 13 March 2013
+#
+# Just got more data from Jascha 
+# https://mail.google.com/mail/u/0/?ui=2&shva=1#sent/13d5f29363897323
+# Now I want to make a concordance of this new data and graph its
+# distribtions
+
+	# Libraries
+	library(ggplot2)
+	library(reshape2)
+	library(plyr)
+	library(gbm)
+
+	# Data
+	data <- read.csv('~/Downloads/gm_process_output_20130312.csv')
+	
+	# Modify
+	gms_conditions <- c(
+		'growth mindset', 
+		'growth mindset + link'
+	)
+	data$is_gms <- data$alternative %in% gms_conditions
+	
+	# Factor Summaries
+	n = nrow(data)
+	n								# ~ 300 K students
+	sum(data$is_gms)/n				# ~ 18% in growth mindset exp
+
+
+	# Numeric Summaries
+	numeric <- laply(data, is.numeric)
+	s <- data[sample(n, 10000),numeric]
+	m <- melt(s)
+	
+	ggplot(m, aes(value)) + 
+		geom_histogram() +
+		facet_wrap(~variable, scales='free')
+
+	ggplot(m[m$value > 0,], aes(log(value))) + 
+		geom_histogram() +
+		facet_wrap(~variable, scales='free')
+	
+	# Two ways
+	of_interest <- c(
+		'num_pre', 
+		'proficiencies_pre', 
+		'num_post',
+		'proficiencies_post'
+	)
+	numeric <- laply(data, is.numeric)
+	s <- data[sample(n, 1000),numeric]
+	m <- melt(s)
+	small_m <- m[m$variable %in% of_interest,]
+	two_way <- ddply(small_m, .(variable), function(df){
+		data.frame(df, small_m)	
+	})
+	
+	ggplot(two_way, aes(value, value.1)) + 
+		geom_point(size=0.5, alpha=0.5) + 
+		geom_density2d() + 
+		facet_grid(variable.1 ~ variable, scales="free")
+
+## ? Why do proficiencies get up to 50%?
+
+
+	ggplot(s, aes(num_post, num_post*proficiencies_post)) + 
+		geom_point() +
+		xlim(0, 100) +
+		ylim(0, 100) +
+		geom_line(aes(1:nrow(s), (1:nrow(s))/10))
+
+		
+# Results
+#
+# 300 K students 18% in growth mindset
+#
+# Histograms
+# http://dl.dropbox.com/u/1131693/bloodrop/Screen%20Shot%202013-03-13%20at%204.14.24%20PM.png
+#
+# Histograms (log - zeros excluded)
+# http://dl.dropbox.com/u/1131693/bloodrop/Screen%20Shot%202013-03-13%20at%204.17.12%20PM.png
+#
+#
+# Proficiencies vs Number done
+# http://dl.dropbox.com/u/1131693/bloodrop/Screen%20Shot%202013-03-14%20at%2010.53.00%20AM.png
+# *note: line represents 1/10
+
+###################################################################
+# 
+# Wilcox or Die
+# 13 March 2013
+#
+# Lets be sure this new data still passes the wilcox test from
+# before.
+
+	# Libraries
+	library(ggplot2)
+	library(reshape2)
+	library(plyr)
+	library(gbm)
+
+	# Data
+	data <- read.csv('~/Downloads/gm_process_output_20130312.csv')
+
+proficiencies = data$num_post * data$proficiencies_post
+is_gms = data$alternative %in% c('growth mindset',  'growth mindset + link')
+r = wilcox.test(proficiencies[is_gms], proficiencies[!is_gms])
+r$p.value 
+
+# 0.077
+	
+	# Modify
+	gms_conditions <- c(
+		'growth mindset', 
+		'growth mindset + link'
+	)
+	data$is_gms <- data$alternative %in% gms_conditions
+
+	# Helper
+	run_wilcox <- function(x){
+		wilcox.test(
+			x=x[data$is_gms],
+			y=x[!data$is_gms]
+		)		
+	}
+
+	# Are they doing more?
+	r <- run_wilcox(data$num_post)
+	r$p.value  # 0.077
+	
+	# Are they getting more proficiencies?
+	proficiencies <- data$proficiencies_post * data$num_post
+	r <- run_wilcox(proficiencies)
+	r$p.value  # 0.116
+	
+	# Is their proficiency rate increasing?
+	r <- run_wilcox(data$proficiencies_post)
+	r$p.value  # 0.396
+	
+	# Are they doing more fractions?
+	r <- run_wilcox(data$num_post_frac)
+	r$p.value  # 0.13
+	
+	# Are they doing more other?
+	r <- run_wilcox(data$num_post_other)
+	r$p.value  # 0.15
+	
+	
+	
+	
+# Results
+#
+# Disturbiningly the wilcox test is not improving.  What shall we
+# do?  Double check the data I suppose.
+
+
+
+
+# ###################################################################
+# # 
+# # Somethings Rotten in the State of Denmark
+# # 13 March 2013
+# #
+# # The wilcox tests are comming out poor.  I wonder if some of the
+# # data is strange.
+
+	# # Libraries
+	# library(plyr)
+	# library(gbm)
+
+	# # Data
+	# data <- read.csv('~/Downloads/gm_process_output_20130312.csv')
+	
+	# # Modify
+	# gms_conditions <- c(
+		# 'growth mindset', 
+		# 'growth mindset + link'
+	# )
+	# data$is_gms <- data$alternative %in% gms_conditions
+
+
+	# # Sample
+	# s <- data[
+		# sample(nrow(data), 10000),
+		# !names(data) %in% c('identity', 'alternative', 'experiment')
+	# ]
+	
+	# # Discriminate
+	# m <- gbm(
+		# is_gms + 0 ~ .,
+		# n.trees = 1000,
+		# interaction.depth = 1,
+		# shrinkage=0.0005,
+		# data = s,
+		# cv.folds=2
+	# )
+	# best.iter <- gbm.perf(m, method='cv')
+	# summary(m, n.trees=best.iter)
+	# p <- predict(m, n.trees=best.iter, newdata=s)
+	# plot(p, s$noisy)
+
+# # Result
+# # Found nothing that predicted condition.  That's good.
+	
+	
+###################################################################
+# 
+# What's a matta you?
+# 13 March 2013
+#
+# If we rotate a column and check for noise, can we see any
+# original data that looks like noise?
+
+	# Libraries
+	library(plyr)
+	library(gbm)
+
+	# Data
+	clean <- read.csv('~/Downloads/gm_process_output_20130312.csv')
+	
+	# Add noise
+	to_shuffle <- c('num_pre')
+	noisy <- clean
+	noisy[,to_shuffle] <- noisy[sample(nrow(noisy)),to_shuffle]
+	
+	# Build data
+	noisy$noisy <- 1
+	clean$noisy <- 0
+	data <- rbind(clean, noisy)
+
+	# Sample
+	s <- data[
+		sample(nrow(data), 100000),
+		!names(data) %in% c('identity')
+	]
+	
+	# Discriminate
+	m <- gbm(
+		noisy ~ .,
+		n.trees = 100,
+		interaction.depth = 3,
+		shrinkage=0.5,
+		data = s,
+		cv.folds=2
+	)
+	best.iter <- gbm.perf(m, method='cv')
+	summary(m, n.trees=best.iter)
+	p <- predict(m, n.trees=best.iter, newdata=s)
+	plot(p, s$noisy)
+
+
+	s[s$noisy == 0,][which.max(p[s$noisy == 0]),]
+
+# Result
+# Found nothing that predicted condition.  That's good.
