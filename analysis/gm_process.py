@@ -68,7 +68,8 @@ sep = ',' # "\t"
 
 
 # the attributes to look at
-attributes = ['num', 'correct', 'proficiencies', 'hints', 'median_time', 'review', 'irt_difficulty']
+# irt_easiness is the bias term from an IRT model trained on all the exercises -- it gives a sense of how easy an exercise is
+attributes = ['num', 'correct', 'proficiencies', 'hints', 'median_time', 'review', 'irt_easiness']
 # the subsets of the data for which to look at each of these attributes
 # pre -- before intervention
 # post -- after intervention
@@ -76,7 +77,7 @@ attributes = ['num', 'correct', 'proficiencies', 'hints', 'median_time', 'review
 # post_other -- post intervention, only the non-target exercises
 subsets = ['pre', 'post', 'post_frac', 'post_other']
 
-# load the parameters from an IRT model so that we can look at average exercise difficulty
+# load the parameters from an IRT model so that we can look at average exercise easiness
 def generate_exercise_ind():
     """ this function because I stupidly saved the mIRT exercise lookup as a default dict, which needs a function of this name """
     pass
@@ -89,11 +90,13 @@ def print_header(options):
         # no headers in Hive
         return
     if options.mode=='student':
-        print 'experiment, alternative, identity, intervention_time, num_coaches, max_coach_students', 
+        sys.stdout.write( 'experiment, alternative, identity,
+                intervention_time, num_coaches, max_coach_students' )
         for s in subsets:
             for a in attributes:
-                print ", %s_%s"%(a, s),
-        print
+                sys.stdout.write( ",%s_%s"%(a, s) )
+        sys.stdout.write(',intervention_time')
+        sys.stdout.write("\n")
 
 def process_user(rows, options):
     N = len(rows)
@@ -107,9 +110,9 @@ def process_user(rows, options):
         (ex in target_exercises) and (float(time) >= intervention_start)
         for ex, time in zip(cols['exercise'], cols['time_done'])
     ])
-    # skip users for whom we don't have an exposure time
-    if sum(cols['exposed']) == 0:
-        return
+    ## skip users for whom we don't have an exposure time
+    #if sum(cols['exposed']) == 0:
+    #    return
 
     cols['time_done'] = cols['time_done'].astype(float)
     cols['time_taken'] = cols['time_taken'].astype(float)
@@ -119,8 +122,8 @@ def process_user(rows, options):
     cols['topic_mode'] = cols['topic_mode'].astype(bool)
     cols['hints'] = cols['hints'].astype(int)
 
-    # look up the difficulty for each of the exercises
-    cols['irt_difficulty'] = np.zeros(cols['exercise'].shape)
+    # look up the easiness for each of the exercises
+    cols['irt_easiness'] = np.zeros(cols['exercise'].shape)
     for ii, ex in enumerate(cols['exercise']):
         #print irt['exercise_ind_dict']
         #print ex
@@ -128,25 +131,28 @@ def process_user(rows, options):
             ind = irt_ex_ind[ex]
         except KeyError:
             #print ex
-            cols['irt_difficulty'][ii] = np.nan
+            cols['irt_easiness'][ii] = np.nan
             continue
-        cols['irt_difficulty'][ii] = irt_couplings[ind,-1]
+        cols['irt_easiness'][ii] = irt_couplings[ind,-1]
 
     aa = cols['time_done']
     bb = cols['exposed']
-    intervention_time = np.min(aa[bb])
+    if sum(bb) > 0:
+        intervention_time = np.min(aa[bb])
+    else:
+        intervention_time = -1
 
     # mark the problems done pre-intervention
     cols['pre'] = (cols['time_done'] < intervention_time)
     
     # and output the aggregated info for the user
     if options.mode=='student':
-        print cols['experiment'][0], sep,
-        print cols['alternative'][0], sep,
-        print cols['identity'][0], sep,
-        print intervention_time, sep,
-        print cols['num_coaches'][0], sep,
-        print cols['max_coach_students'][0],
+        sys.stdout.write( cols['experiment'][0] + sep )
+        sys.stdout.write( cols['alternative'][0] + sep )
+        sys.stdout.write( cols['identity'][0] + sep )
+        sys.stdout.write( intervention_time + sep )
+        sys.stdout.write( cols['num_coaches'][0] + sep )
+        sys.stdout.write( cols['max_coach_students'][0] )
 
         for s in subsets:
             if s == 'pre':
@@ -160,7 +166,7 @@ def process_user(rows, options):
             for a in attributes:
                 if inds.shape[0] == 0:
                     # there's no data for this condition
-                    print sep,
+                    sys.stdout.write( sep )
                     continue
                 if a == 'num':
                     val = inds.shape[0]
@@ -174,18 +180,19 @@ def process_user(rows, options):
                     val = np.median(cols['time_taken'][inds])
                 elif a == 'review':
                     val = np.mean(cols['review_mode'][inds])
-                elif a == 'irt_difficulty':
-                    xx = cols['irt_difficulty'][inds]
-                    # nansum to ignore exercises we don't know the difficulty of
+                elif a == 'irt_easiness':
+                    xx = cols['irt_easiness'][inds]
+                    # nansum to ignore exercises we don't know the easiness of
                     val = np.nansum(xx)/sum(np.isfinite(xx))
                 else:
-                    print "invalid output column type"
+                    print >>sys.stderr,"invalid output column type"
 
-                print sep, val,
+                sys.stdout.write( sep + str(val) )
 
-        print        
+        sys.stdout.write( sep + str(intervention_time) )    
+        sys.stdout.write( "\n" )       
     else:
-        print "processing mode not supported yet"
+        print >>sys.stderr,"processing mode not supported yet"
 
 
 def get_cmd_line_args():
