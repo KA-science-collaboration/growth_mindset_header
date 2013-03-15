@@ -90,7 +90,7 @@ def print_header(options):
         # no headers in Hive
         return
     if options.mode=='student':
-        sys.stdout.write( 'experiment, alternative, identity, intervention_time, num_coaches, max_coach_students' )
+        sys.stdout.write( 'experiment,alternative,identity,intervention_time,num_coaches,max_coach_students' )
         for s in subsets:
             for a in attributes:
                 sys.stdout.write( ",%s_%s"%(a, s) )
@@ -132,6 +132,7 @@ def process_user(rows, options):
         try:
             ind = irt_ex_ind[ex]
         except KeyError:
+            # new exercises that we don't have difficulty estimates for
             #print ex
             cols['irt_easiness'][ii] = np.nan
             continue
