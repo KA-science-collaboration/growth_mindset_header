@@ -4,6 +4,9 @@ import re
 import optparse
 import numpy as np
 
+# When the intervention was deployed
+intervention_start = 1359187200
+
 target_exercises = [
   'adding_and_subtracting_fractions',
   'adding_fractions',
@@ -86,7 +89,7 @@ def print_header(options):
         # no headers in Hive
         return
     if options.mode=='student':
-        print 'experiment, alternative, identity, num_coaches, max_coach_students', 
+        print 'experiment, alternative, identity, intervention_time, num_coaches, max_coach_students', 
         for s in subsets:
             for a in attributes:
                 print ", %s_%s"%(a, s),
@@ -100,7 +103,10 @@ def process_user(rows, options):
     for field in fields_input:
         cols[field] = np.asarray([row[idx[field]] for row in rows])
 
-    cols['exposed'] = np.asarray([ex in target_exercises for ex in cols['exercise']])
+    cols['exposed'] = np.asarray([
+        (ex in target_exercises) and (float(time) >= intervention_start)
+        for ex, time in zip(cols['exercise'], cols['time_done'])
+    ])
     # skip users for whom we don't have an exposure time
     if sum(cols['exposed']) == 0:
         return
@@ -138,6 +144,7 @@ def process_user(rows, options):
         print cols['experiment'][0], sep,
         print cols['alternative'][0], sep,
         print cols['identity'][0], sep,
+        print intervention_time, sep,
         print cols['num_coaches'][0], sep,
         print cols['max_coach_students'][0],
 
