@@ -75,7 +75,7 @@ def aggregate_by_id(in_):
     aggregate = [
         ('group',        data[0][1]),
         ('subtest',      subtest),
-        ('id',           hash(data[0][2])),
+        ('id',           data[0][2]),
 
         ('start',        min(times)),
         ('end',          max(times)),
