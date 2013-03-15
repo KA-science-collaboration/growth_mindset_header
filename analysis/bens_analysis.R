@@ -1323,7 +1323,7 @@
 		'proficiencies_post'
 	)
 	numeric <- laply(data, is.numeric)
-	s <- data[sample(n, 1000),numeric]
+	s <- data[sample(n, 10000),numeric]
 	m <- melt(s)
 	small_m <- m[m$variable %in% of_interest,]
 	two_way <- ddply(small_m, .(variable), function(df){
@@ -1335,9 +1335,15 @@
 		geom_density2d() + 
 		facet_grid(variable.1 ~ variable, scales="free")
 
-## ? Why do proficiencies get up to 50%?
+	ggplot(two_way, aes(log(value), log(value.1))) + 
+		geom_point(size=0.5, alpha=0.5) + 
+		geom_density2d() + 
+		facet_grid(variable.1 ~ variable, scales="free")
 
 
+
+
+	# Custom graphs
 	ggplot(s, aes(num_post, num_post*proficiencies_post)) + 
 		geom_point() +
 		xlim(0, 100) +
@@ -1354,7 +1360,6 @@
 #
 # Histograms (log - zeros excluded)
 # http://dl.dropbox.com/u/1131693/bloodrop/Screen%20Shot%202013-03-13%20at%204.17.12%20PM.png
-#
 #
 # Proficiencies vs Number done
 # http://dl.dropbox.com/u/1131693/bloodrop/Screen%20Shot%202013-03-14%20at%2010.53.00%20AM.png
@@ -1376,13 +1381,8 @@
 
 	# Data
 	data <- read.csv('~/Downloads/gm_process_output_20130312.csv')
+	data <- data[data$experiment == 'growth-mindset',]
 
-proficiencies = data$num_post * data$proficiencies_post
-is_gms = data$alternative %in% c('growth mindset',  'growth mindset + link')
-r = wilcox.test(proficiencies[is_gms], proficiencies[!is_gms])
-r$p.value 
-
-# 0.077
 	
 	# Modify
 	gms_conditions <- c(
@@ -1401,24 +1401,24 @@ r$p.value
 
 	# Are they doing more?
 	r <- run_wilcox(data$num_post)
-	r$p.value  # 0.077
+	r$p.value  # 0.095
 	
 	# Are they getting more proficiencies?
 	proficiencies <- data$proficiencies_post * data$num_post
 	r <- run_wilcox(proficiencies)
-	r$p.value  # 0.116
+	r$p.value  # 0.130
 	
 	# Is their proficiency rate increasing?
 	r <- run_wilcox(data$proficiencies_post)
-	r$p.value  # 0.396
+	r$p.value  # 0.313
 	
 	# Are they doing more fractions?
 	r <- run_wilcox(data$num_post_frac)
-	r$p.value  # 0.13
+	r$p.value  # 0.14
 	
 	# Are they doing more other?
 	r <- run_wilcox(data$num_post_other)
-	r$p.value  # 0.15
+	r$p.value  # 0.17
 	
 	
 	
@@ -1478,53 +1478,249 @@ r$p.value
 # # Found nothing that predicted condition.  That's good.
 	
 	
+# ###################################################################
+# # 
+# # What's a matta you?
+# # 13 March 2013
+# #
+# # If we rotate a column and check for noise, can we see any
+# # original data that looks like noise?
+
+	# # Libraries
+	# library(plyr)
+	# library(gbm)
+
+	# # Data
+	# clean <- read.csv('~/Downloads/gm_process_output_20130312.csv')
+	
+	# # Add noise
+	# to_shuffle <- c('num_pre')
+	# noisy <- clean
+	# noisy[,to_shuffle] <- noisy[sample(nrow(noisy)),to_shuffle]
+	
+	# # Build data
+	# noisy$noisy <- 1
+	# clean$noisy <- 0
+	# data <- rbind(clean, noisy)
+
+	# # Sample
+	# s <- data[
+		# sample(nrow(data), 100000),
+		# !names(data) %in% c('identity')
+	# ]
+	
+	# # Discriminate
+	# m <- gbm(
+		# noisy ~ .,
+		# n.trees = 100,
+		# interaction.depth = 3,
+		# shrinkage=0.5,
+		# data = s,
+		# cv.folds=2
+	# )
+	# best.iter <- gbm.perf(m, method='cv')
+	# summary(m, n.trees=best.iter)
+	# p <- predict(m, n.trees=best.iter, newdata=s)
+	# plot(p, s$noisy)
+
+
+	# s[s$noisy == 0,][which.max(p[s$noisy == 0]),]
+
+
+
 ###################################################################
 # 
-# What's a matta you?
-# 13 March 2013
+# Testing the Aggregator
+# 14 March 2013
 #
-# If we rotate a column and check for noise, can we see any
-# original data that looks like noise?
+# Does the aggregator work as I expect that it should?
+
+
+# ~/Downloads/gm_ab_perproblems_example_rows.csv | python2 gm_process.py > ~/temp.csv
+
+	# Data
+	data <- read.csv('~/Downloads/gm_process_output_20130312.csv')
+	
+	id <- "..5TuYrPFIATiv5F_2uJ1SbGP1R91SM0Py6rOnZ9"
+	matches <- grepl(id, data$identity)
+	data[matches,]
+	
+# In comparing this student to his raw data....
+# First thing to note is that this damn student is repeated twice because he is in the subtest.
+# Second, within the subtest, in the alternative column he is listed as 'positive statment' in the raw data, but as 'science statement' in my data.  WTF!
+# The calculated intervention time is not in the data, it should be
+## Other factors I have checked look fine
+
+
+###################################################################
+# 
+# Experiment Assignment?
+# 14 March 2013
+#
+# The subset was wrong in one case before.  Is study assignment 
+# ever affected?
+
+	# Data
+	new <- read.csv('~/Downloads/gm_process_output_20130312.csv')
+	old <- read.csv('~/Downloads/gm.aggregate.csv')
+	
+	# Shrink em
+	new <- new[
+		new$experiment == "growth-mindset",
+		c('alternative', 'identity')
+	]
+	names(new) <- c('study', 'id')
+	old <- old[
+		,
+		c('group', 'id')
+	]
+	names(old) <- c('study', 'id')
+	
+	# Merge em
+	data <- merge(new, old, by='id')
+	
+	
+	# Show problems
+	sum(
+		data$study.x == 'growth mindset' &
+		data$study.y == 'growth mindset + link'
+	)
+	# 9383
+	
+	sum(
+		data$study.x == 'growth mindset + link' &
+		data$study.y == 'growth mindset'
+	)
+	# 9413
+	
+		
+# Results
+#
+# On the study level it seems as if growth mindset and growth
+# mindset with link have been scrambled, though the rest seem
+# pretty regular.
+
+
+
+###################################################################
+# 
+# Subtest Assignment?
+# 14 March 2013
+#
+# The subtest was wrong in one case before.  Is subtest assignment 
+# ever affected?
+
+	# Data
+	new <- read.csv('~/Downloads/gm_process_output_20130312.csv')
+	old <- read.csv('~/Downloads/gm.aggregate.csv')
+	
+	# Shrink em
+	new <- new[
+		new$experiment == "growth-mindset-subtest",
+		c('alternative', 'identity')
+	]
+	names(new) <- c('subtest', 'id')
+	old <- old[
+		,
+		c('subtest', 'id')
+	]
+	names(old) <- c('subtest', 'id')
+	
+	# Merge em
+	data <- merge(new, old, by='id')
+	
+	
+	# Show problems
+	sum(
+		data$subtest.x == 'positive statement' &
+		data$subtest.y == 'science statement'
+	)
+	# 9345
+	
+	sum(
+		data$subtest.x == 'science statement' &
+		data$subtest.y == 'positive statement'
+	)
+	# 9393
+	
+		
+# Results
+#
+# Roughly the same number of students were switched as above
+# very curious.  Perhaps Jascha has insight by now?
+
+
+
+
+###################################################################
+# 
+# Do I believe the dashboard?
+# 14 March 2013
+#
+# Jascha sent the dashboard link which shows that the students in
+# the growth mindset condition are achieving more proficiencies.
+#
+# Do I see that in this data?
 
 	# Libraries
 	library(plyr)
-	library(gbm)
 
 	# Data
-	clean <- read.csv('~/Downloads/gm_process_output_20130312.csv')
+	data <- read.csv('~/Downloads/gm_process_output_20130312.csv')
 	
-	# Add noise
-	to_shuffle <- c('num_pre')
-	noisy <- clean
-	noisy[,to_shuffle] <- noisy[sample(nrow(noisy)),to_shuffle]
+	# Remove subtest
+	data <- data[data$experiment == "growth-mindset",]
 	
-	# Build data
-	noisy$noisy <- 1
-	clean$noisy <- 0
-	data <- rbind(clean, noisy)
+	# Check percentages
+	ddply(data, .(alternative), function(df){data.frame(
+		post=sum(df$proficiencies_post*df$num_post)/nrow(df)
+	)})	
+		
+# Results
+#
+# Very weird, these values are near 12, yet the ones in the dashboard
+# are near 2.5.  Something is rotten in the state of Denmark.
 
-	# Sample
-	s <- data[
-		sample(nrow(data), 100000),
-		!names(data) %in% c('identity')
-	]
+
+
+###################################################################
+# 
+# Intervention Times!
+# 15 March 2013
+#
+# It dawned on me last night that our intervention times are 
+# probably wrong.  Jascha's script does not account for the fact
+# that some students may have performed fractions exercises before
+# the intervention began.
+#
+# I want to take the following steps
+#
+# 	. (x) Add intervention time to Jascha's report.
+#	. (X) Check that its the time I expect on the sample.
+#	. (x) Change the sample time to prove you can get an impossible one.
+#	. (x) Write to the group.
+#	. (x) Fix it.
+#	. ( ) Check that its fixed using the example data.
+#	. ( ) Run on the new data.
+#	. ( ) Post new data, script, and write to group.
+#	. ( ) Comment out previous silly entries.
+#	. ( ) Rerun these ananlysis with the new data.
+
+	# Libraries
+	library(plyr)
+
+	# Data
+	data <- read.csv('~/Downloads/gm_process_output_20130312.csv')
 	
-	# Discriminate
-	m <- gbm(
-		noisy ~ .,
-		n.trees = 100,
-		interaction.depth = 3,
-		shrinkage=0.5,
-		data = s,
-		cv.folds=2
-	)
-	best.iter <- gbm.perf(m, method='cv')
-	summary(m, n.trees=best.iter)
-	p <- predict(m, n.trees=best.iter, newdata=s)
-	plot(p, s$noisy)
-
-
-	s[s$noisy == 0,][which.max(p[s$noisy == 0]),]
-
-# Result
-# Found nothing that predicted condition.  That's good.
+	# Remove subtest
+	data <- data[data$experiment == "growth-mindset",]
+	
+	# Check percentages
+	ddply(data, .(alternative), function(df){data.frame(
+		post=sum(df$proficiencies_post*df$num_post)/nrow(df)
+	)})	
+		
+# Results
+#
+# Very weird, these values are near 12, yet the ones in the dashboard
+# are near 2.5.  Something is rotten in the state of Denmark.
