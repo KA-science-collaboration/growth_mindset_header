@@ -90,8 +90,7 @@ def print_header(options):
         # no headers in Hive
         return
     if options.mode=='student':
-        sys.stdout.write( 'experiment, alternative, identity,
-                intervention_time, num_coaches, max_coach_students' )
+        sys.stdout.write( 'experiment, alternative, identity, intervention_time, num_coaches, max_coach_students' )
         for s in subsets:
             for a in attributes:
                 sys.stdout.write( ",%s_%s"%(a, s) )
@@ -106,14 +105,6 @@ def process_user(rows, options):
     for field in fields_input:
         cols[field] = np.asarray([row[idx[field]] for row in rows])
 
-    cols['exposed'] = np.asarray([
-        (ex in target_exercises) and (float(time) >= intervention_start)
-        for ex, time in zip(cols['exercise'], cols['time_done'])
-    ])
-    ## skip users for whom we don't have an exposure time
-    #if sum(cols['exposed']) == 0:
-    #    return
-
     cols['time_done'] = cols['time_done'].astype(float)
     cols['time_taken'] = cols['time_taken'].astype(float)
     cols['correct'] = cols['correct'].astype(bool)
@@ -121,6 +112,17 @@ def process_user(rows, options):
     cols['review_mode'] = cols['review_mode'].astype(bool)
     cols['topic_mode'] = cols['topic_mode'].astype(bool)
     cols['hints'] = cols['hints'].astype(int)
+
+    # Determine exposure to the intervention
+    # On exercises completed after the intervention was started
+    cols['exposed'] = np.asarray([
+        (ex in target_exercises) and (time >= intervention_start)
+        for ex, time in zip(cols['exercise'], cols['time_done'])
+    ])
+    ## skip users for whom we don't have an exposure time
+    #if sum(cols['exposed']) == 0:
+    #    return
+
 
     # look up the easiness for each of the exercises
     cols['irt_easiness'] = np.zeros(cols['exercise'].shape)
@@ -150,7 +152,7 @@ def process_user(rows, options):
         sys.stdout.write( cols['experiment'][0] + sep )
         sys.stdout.write( cols['alternative'][0] + sep )
         sys.stdout.write( cols['identity'][0] + sep )
-        sys.stdout.write( intervention_time + sep )
+        sys.stdout.write( str(intervention_time) + sep )
         sys.stdout.write( cols['num_coaches'][0] + sep )
         sys.stdout.write( cols['max_coach_students'][0] )
 
