@@ -90,11 +90,10 @@ def print_header(options):
         # no headers in Hive
         return
     if options.mode=='student':
-        sys.stdout.write( 'experiment,alternative,identity,intervention_time,num_coaches,max_coach_students' )
+        sys.stdout.write( 'experiment,alternative,identity,intervention_time,start,stop,num_coaches,max_coach_students' )
         for s in subsets:
             for a in attributes:
                 sys.stdout.write( ",%s_%s"%(a, s) )
-        sys.stdout.write(',intervention_time')
         sys.stdout.write("\n")
 
 def process_user(rows, options):
@@ -138,8 +137,11 @@ def process_user(rows, options):
             continue
         cols['irt_easiness'][ii] = irt_couplings[ind,-1]
 
+    # find times
     aa = cols['time_done']
     bb = cols['exposed']
+    start = min(aa)
+    stop = max(aa)
     if sum(bb) > 0:
         intervention_time = np.min(aa[bb])
     else:
@@ -154,6 +156,8 @@ def process_user(rows, options):
         sys.stdout.write( cols['alternative'][0] + sep )
         sys.stdout.write( cols['identity'][0] + sep )
         sys.stdout.write( str(intervention_time) + sep )
+        sys.stdout.write( str(start) + sep )
+        sys.stdout.write( str(stop) + sep )
         sys.stdout.write( cols['num_coaches'][0] + sep )
         sys.stdout.write( cols['max_coach_students'][0] )
 
@@ -192,7 +196,6 @@ def process_user(rows, options):
 
                 sys.stdout.write( sep + str(val) )
 
-        sys.stdout.write( sep + str(intervention_time) )    
         sys.stdout.write( "\n" )       
     else:
         print >>sys.stderr,"processing mode not supported yet"
