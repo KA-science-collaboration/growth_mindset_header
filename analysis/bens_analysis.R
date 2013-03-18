@@ -1270,163 +1270,163 @@
 	# will do.
 	
 		
-###################################################################
-# 
-# Mo Data, Mo Problems
-# 13 March 2013
-#
-# Just got more data from Jascha 
-# https://mail.google.com/mail/u/0/?ui=2&shva=1#sent/13d5f29363897323
-# Now I want to make a concordance of this new data and graph its
-# distribtions
+# ###################################################################
+# # 
+# # Mo Data, Mo Problems
+# # 13 March 2013
+# #
+# # Just got more data from Jascha 
+# # https://mail.google.com/mail/u/0/?ui=2&shva=1#sent/13d5f29363897323
+# # Now I want to make a concordance of this new data and graph its
+# # distribtions
 
-	# Libraries
-	library(ggplot2)
-	library(reshape2)
-	library(plyr)
-	library(gbm)
+	# # Libraries
+	# library(ggplot2)
+	# library(reshape2)
+	# library(plyr)
+	# library(gbm)
 
-	# Data
-	data <- read.csv('~/Downloads/gm_process_output_20130312.csv')
+	# # Data
+	# data <- read.csv('~/Downloads/gm_process_output_20130312.csv')
 	
-	# Modify
-	gms_conditions <- c(
-		'growth mindset', 
-		'growth mindset + link'
-	)
-	data$is_gms <- data$alternative %in% gms_conditions
+	# # Modify
+	# gms_conditions <- c(
+		# 'growth mindset', 
+		# 'growth mindset + link'
+	# )
+	# data$is_gms <- data$alternative %in% gms_conditions
 	
-	# Factor Summaries
-	n = nrow(data)
-	n								# ~ 300 K students
-	sum(data$is_gms)/n				# ~ 18% in growth mindset exp
+	# # Factor Summaries
+	# n = nrow(data)
+	# n								# ~ 300 K students
+	# sum(data$is_gms)/n				# ~ 18% in growth mindset exp
 
 
-	# Numeric Summaries
-	numeric <- laply(data, is.numeric)
-	s <- data[sample(n, 10000),numeric]
-	m <- melt(s)
+	# # Numeric Summaries
+	# numeric <- laply(data, is.numeric)
+	# s <- data[sample(n, 10000),numeric]
+	# m <- melt(s)
 	
-	ggplot(m, aes(value)) + 
-		geom_histogram() +
-		facet_wrap(~variable, scales='free')
+	# ggplot(m, aes(value)) + 
+		# geom_histogram() +
+		# facet_wrap(~variable, scales='free')
 
-	ggplot(m[m$value > 0,], aes(log(value))) + 
-		geom_histogram() +
-		facet_wrap(~variable, scales='free')
+	# ggplot(m[m$value > 0,], aes(log(value))) + 
+		# geom_histogram() +
+		# facet_wrap(~variable, scales='free')
 	
-	# Two ways
-	of_interest <- c(
-		'num_pre', 
-		'proficiencies_pre', 
-		'num_post',
-		'proficiencies_post'
-	)
-	numeric <- laply(data, is.numeric)
-	s <- data[sample(n, 10000),numeric]
-	m <- melt(s)
-	small_m <- m[m$variable %in% of_interest,]
-	two_way <- ddply(small_m, .(variable), function(df){
-		data.frame(df, small_m)	
-	})
+	# # Two ways
+	# of_interest <- c(
+		# 'num_pre', 
+		# 'proficiencies_pre', 
+		# 'num_post',
+		# 'proficiencies_post'
+	# )
+	# numeric <- laply(data, is.numeric)
+	# s <- data[sample(n, 10000),numeric]
+	# m <- melt(s)
+	# small_m <- m[m$variable %in% of_interest,]
+	# two_way <- ddply(small_m, .(variable), function(df){
+		# data.frame(df, small_m)	
+	# })
 	
-	ggplot(two_way, aes(value, value.1)) + 
-		geom_point(size=0.5, alpha=0.5) + 
-		geom_density2d() + 
-		facet_grid(variable.1 ~ variable, scales="free")
+	# ggplot(two_way, aes(value, value.1)) + 
+		# geom_point(size=0.5, alpha=0.5) + 
+		# geom_density2d() + 
+		# facet_grid(variable.1 ~ variable, scales="free")
 
-	ggplot(two_way, aes(log(value), log(value.1))) + 
-		geom_point(size=0.5, alpha=0.5) + 
-		geom_density2d() + 
-		facet_grid(variable.1 ~ variable, scales="free")
-
-
+	# ggplot(two_way, aes(log(value), log(value.1))) + 
+		# geom_point(size=0.5, alpha=0.5) + 
+		# geom_density2d() + 
+		# facet_grid(variable.1 ~ variable, scales="free")
 
 
-	# Custom graphs
-	ggplot(s, aes(num_post, num_post*proficiencies_post)) + 
-		geom_point() +
-		xlim(0, 100) +
-		ylim(0, 100) +
-		geom_line(aes(1:nrow(s), (1:nrow(s))/10))
+
+
+	# # Custom graphs
+	# ggplot(s, aes(num_post, num_post*proficiencies_post)) + 
+		# geom_point() +
+		# xlim(0, 100) +
+		# ylim(0, 100) +
+		# geom_line(aes(1:nrow(s), (1:nrow(s))/10))
 
 		
-# Results
-#
-# 300 K students 18% in growth mindset
-#
-# Histograms
-# http://dl.dropbox.com/u/1131693/bloodrop/Screen%20Shot%202013-03-13%20at%204.14.24%20PM.png
-#
-# Histograms (log - zeros excluded)
-# http://dl.dropbox.com/u/1131693/bloodrop/Screen%20Shot%202013-03-13%20at%204.17.12%20PM.png
-#
-# Proficiencies vs Number done
-# http://dl.dropbox.com/u/1131693/bloodrop/Screen%20Shot%202013-03-14%20at%2010.53.00%20AM.png
-# *note: line represents 1/10
+# # Results
+# #
+# # 300 K students 18% in growth mindset
+# #
+# # Histograms
+# # http://dl.dropbox.com/u/1131693/bloodrop/Screen%20Shot%202013-03-13%20at%204.14.24%20PM.png
+# #
+# # Histograms (log - zeros excluded)
+# # http://dl.dropbox.com/u/1131693/bloodrop/Screen%20Shot%202013-03-13%20at%204.17.12%20PM.png
+# #
+# # Proficiencies vs Number done
+# # http://dl.dropbox.com/u/1131693/bloodrop/Screen%20Shot%202013-03-14%20at%2010.53.00%20AM.png
+# # *note: line represents 1/10
 
-###################################################################
-# 
-# Wilcox or Die
-# 13 March 2013
-#
-# Lets be sure this new data still passes the wilcox test from
-# before.
+# ###################################################################
+# # 
+# # Wilcox or Die
+# # 13 March 2013
+# #
+# # Lets be sure this new data still passes the wilcox test from
+# # before.
 
-	# Libraries
-	library(ggplot2)
-	library(reshape2)
-	library(plyr)
-	library(gbm)
+	# # Libraries
+	# library(ggplot2)
+	# library(reshape2)
+	# library(plyr)
+	# library(gbm)
 
-	# Data
-	data <- read.csv('~/Downloads/gm_process_output_20130312.csv')
-	data <- data[data$experiment == 'growth-mindset',]
+	# # Data
+	# data <- read.csv('~/Downloads/gm_process_output_20130312.csv')
+	# data <- data[data$experiment == 'growth-mindset',]
 
 	
-	# Modify
-	gms_conditions <- c(
-		'growth mindset', 
-		'growth mindset + link'
-	)
-	data$is_gms <- data$alternative %in% gms_conditions
+	# # Modify
+	# gms_conditions <- c(
+		# 'growth mindset', 
+		# 'growth mindset + link'
+	# )
+	# data$is_gms <- data$alternative %in% gms_conditions
 
-	# Helper
-	run_wilcox <- function(x){
-		wilcox.test(
-			x=x[data$is_gms],
-			y=x[!data$is_gms]
-		)		
-	}
+	# # Helper
+	# run_wilcox <- function(x){
+		# wilcox.test(
+			# x=x[data$is_gms],
+			# y=x[!data$is_gms]
+		# )		
+	# }
 
-	# Are they doing more?
-	r <- run_wilcox(data$num_post)
-	r$p.value  # 0.095
+	# # Are they doing more?
+	# r <- run_wilcox(data$num_post)
+	# r$p.value  # 0.095
 	
-	# Are they getting more proficiencies?
-	proficiencies <- data$proficiencies_post * data$num_post
-	r <- run_wilcox(proficiencies)
-	r$p.value  # 0.130
+	# # Are they getting more proficiencies?
+	# proficiencies <- data$proficiencies_post * data$num_post
+	# r <- run_wilcox(proficiencies)
+	# r$p.value  # 0.130
 	
-	# Is their proficiency rate increasing?
-	r <- run_wilcox(data$proficiencies_post)
-	r$p.value  # 0.313
+	# # Is their proficiency rate increasing?
+	# r <- run_wilcox(data$proficiencies_post)
+	# r$p.value  # 0.313
 	
-	# Are they doing more fractions?
-	r <- run_wilcox(data$num_post_frac)
-	r$p.value  # 0.14
+	# # Are they doing more fractions?
+	# r <- run_wilcox(data$num_post_frac)
+	# r$p.value  # 0.14
 	
-	# Are they doing more other?
-	r <- run_wilcox(data$num_post_other)
-	r$p.value  # 0.17
-	
-	
+	# # Are they doing more other?
+	# r <- run_wilcox(data$num_post_other)
+	# r$p.value  # 0.17
 	
 	
-# Results
-#
-# Disturbiningly the wilcox test is not improving.  What shall we
-# do?  Double check the data I suppose.
+	
+	
+# # Results
+# #
+# # Disturbiningly the wilcox test is not improving.  What shall we
+# # do?  Double check the data I suppose.
 
 
 
@@ -1528,158 +1528,158 @@
 
 
 
-###################################################################
-# 
-# Testing the Aggregator
-# 14 March 2013
-#
-# Does the aggregator work as I expect that it should?
+# ###################################################################
+# # 
+# # Testing the Aggregator
+# # 14 March 2013
+# #
+# # Does the aggregator work as I expect that it should?
 
 
-# ~/Downloads/gm_ab_perproblems_example_rows.csv | python2 gm_process.py > ~/temp.csv
+# # ~/Downloads/gm_ab_perproblems_example_rows.csv | python2 gm_process.py > ~/temp.csv
 
-	# Data
-	data <- read.csv('~/Downloads/gm_process_output_20130312.csv')
+	# # Data
+	# data <- read.csv('~/Downloads/gm_process_output_20130312.csv')
 	
-	id <- "..5TuYrPFIATiv5F_2uJ1SbGP1R91SM0Py6rOnZ9"
-	matches <- grepl(id, data$identity)
-	data[matches,]
+	# id <- "..5TuYrPFIATiv5F_2uJ1SbGP1R91SM0Py6rOnZ9"
+	# matches <- grepl(id, data$identity)
+	# data[matches,]
 	
-# In comparing this student to his raw data....
-# First thing to note is that this damn student is repeated twice because he is in the subtest.
-# Second, within the subtest, in the alternative column he is listed as 'positive statment' in the raw data, but as 'science statement' in my data.  WTF!
-# The calculated intervention time is not in the data, it should be
-## Other factors I have checked look fine
-
-
-###################################################################
-# 
-# Experiment Assignment?
-# 14 March 2013
-#
-# The subset was wrong in one case before.  Is study assignment 
-# ever affected?
-
-	# Data
-	new <- read.csv('~/Downloads/gm_process_output_20130312.csv')
-	old <- read.csv('~/Downloads/gm.aggregate.csv')
-	
-	# Shrink em
-	new <- new[
-		new$experiment == "growth-mindset",
-		c('alternative', 'identity')
-	]
-	names(new) <- c('study', 'id')
-	old <- old[
-		,
-		c('group', 'id')
-	]
-	names(old) <- c('study', 'id')
-	
-	# Merge em
-	data <- merge(new, old, by='id')
-	
-	
-	# Show problems
-	sum(
-		data$study.x == 'growth mindset' &
-		data$study.y == 'growth mindset + link'
-	)
-	# 9383
-	
-	sum(
-		data$study.x == 'growth mindset + link' &
-		data$study.y == 'growth mindset'
-	)
-	# 9413
-	
-		
-# Results
-#
-# On the study level it seems as if growth mindset and growth
-# mindset with link have been scrambled, though the rest seem
-# pretty regular.
+# # In comparing this student to his raw data....
+# # First thing to note is that this damn student is repeated twice because he is in the subtest.
+# # Second, within the subtest, in the alternative column he is listed as 'positive statment' in the raw data, but as 'science statement' in my data.  WTF!
+# # The calculated intervention time is not in the data, it should be
+# ## Other factors I have checked look fine
 
 
+# ###################################################################
+# # 
+# # Experiment Assignment?
+# # 14 March 2013
+# #
+# # The subset was wrong in one case before.  Is study assignment 
+# # ever affected?
 
-###################################################################
-# 
-# Subtest Assignment?
-# 14 March 2013
-#
-# The subtest was wrong in one case before.  Is subtest assignment 
-# ever affected?
-
-	# Data
-	new <- read.csv('~/Downloads/gm_process_output_20130312.csv')
-	old <- read.csv('~/Downloads/gm.aggregate.csv')
+	# # Data
+	# new <- read.csv('~/Downloads/gm_process_output_20130312.csv')
+	# old <- read.csv('~/Downloads/gm.aggregate.csv')
 	
-	# Shrink em
-	new <- new[
-		new$experiment == "growth-mindset-subtest",
-		c('alternative', 'identity')
-	]
-	names(new) <- c('subtest', 'id')
-	old <- old[
-		,
-		c('subtest', 'id')
-	]
-	names(old) <- c('subtest', 'id')
+	# # Shrink em
+	# new <- new[
+		# new$experiment == "growth-mindset",
+		# c('alternative', 'identity')
+	# ]
+	# names(new) <- c('study', 'id')
+	# old <- old[
+		# ,
+		# c('group', 'id')
+	# ]
+	# names(old) <- c('study', 'id')
 	
-	# Merge em
-	data <- merge(new, old, by='id')
+	# # Merge em
+	# data <- merge(new, old, by='id')
 	
 	
-	# Show problems
-	sum(
-		data$subtest.x == 'positive statement' &
-		data$subtest.y == 'science statement'
-	)
-	# 9345
+	# # Show problems
+	# sum(
+		# data$study.x == 'growth mindset' &
+		# data$study.y == 'growth mindset + link'
+	# )
+	# # 9383
 	
-	sum(
-		data$subtest.x == 'science statement' &
-		data$subtest.y == 'positive statement'
-	)
-	# 9393
+	# sum(
+		# data$study.x == 'growth mindset + link' &
+		# data$study.y == 'growth mindset'
+	# )
+	# # 9413
 	
 		
-# Results
-#
-# Roughly the same number of students were switched as above
-# very curious.  Perhaps Jascha has insight by now?
+# # Results
+# #
+# # On the study level it seems as if growth mindset and growth
+# # mindset with link have been scrambled, though the rest seem
+# # pretty regular.
 
 
 
+# ###################################################################
+# # 
+# # Subtest Assignment?
+# # 14 March 2013
+# #
+# # The subtest was wrong in one case before.  Is subtest assignment 
+# # ever affected?
 
-###################################################################
-# 
-# Do I believe the dashboard?
-# 14 March 2013
-#
-# Jascha sent the dashboard link which shows that the students in
-# the growth mindset condition are achieving more proficiencies.
-#
-# Do I see that in this data?
-
-	# Libraries
-	library(plyr)
-
-	# Data
-	data <- read.csv('~/Downloads/gm_process_output_20130312.csv')
+	# # Data
+	# new <- read.csv('~/Downloads/gm_process_output_20130312.csv')
+	# old <- read.csv('~/Downloads/gm.aggregate.csv')
 	
-	# Remove subtest
-	data <- data[data$experiment == "growth-mindset",]
+	# # Shrink em
+	# new <- new[
+		# new$experiment == "growth-mindset-subtest",
+		# c('alternative', 'identity')
+	# ]
+	# names(new) <- c('subtest', 'id')
+	# old <- old[
+		# ,
+		# c('subtest', 'id')
+	# ]
+	# names(old) <- c('subtest', 'id')
 	
-	# Check percentages
-	ddply(data, .(alternative), function(df){data.frame(
-		post=sum(df$proficiencies_post*df$num_post)/nrow(df)
-	)})	
+	# # Merge em
+	# data <- merge(new, old, by='id')
+	
+	
+	# # Show problems
+	# sum(
+		# data$subtest.x == 'positive statement' &
+		# data$subtest.y == 'science statement'
+	# )
+	# # 9345
+	
+	# sum(
+		# data$subtest.x == 'science statement' &
+		# data$subtest.y == 'positive statement'
+	# )
+	# # 9393
+	
 		
-# Results
-#
-# Very weird, these values are near 12, yet the ones in the dashboard
-# are near 2.5.  Something is rotten in the state of Denmark.
+# # Results
+# #
+# # Roughly the same number of students were switched as above
+# # very curious.  Perhaps Jascha has insight by now?
+
+
+
+
+# ###################################################################
+# # 
+# # Do I believe the dashboard?
+# # 14 March 2013
+# #
+# # Jascha sent the dashboard link which shows that the students in
+# # the growth mindset condition are achieving more proficiencies.
+# #
+# # Do I see that in this data?
+
+	# # Libraries
+	# library(plyr)
+
+	# # Data
+	# data <- read.csv('~/Downloads/gm_process_output_20130312.csv')
+	
+	# # Remove subtest
+	# data <- data[data$experiment == "growth-mindset",]
+	
+	# # Check percentages
+	# ddply(data, .(alternative), function(df){data.frame(
+		# post=sum(df$proficiencies_post*df$num_post)/nrow(df)
+	# )})	
+		
+# # Results
+# #
+# # Very weird, these values are near 12, yet the ones in the dashboard
+# # are near 2.5.  Something is rotten in the state of Denmark.
 
 
 
@@ -1700,27 +1700,417 @@
 #	. (x) Change the sample time to prove you can get an impossible one.
 #	. (x) Write to the group.
 #	. (x) Fix it.
-#	. ( ) Check that its fixed using the example data.
-#	. ( ) Run on the new data.
-#	. ( ) Post new data, script, and write to group.
-#	. ( ) Comment out previous silly entries.
-#	. ( ) Rerun these ananlysis with the new data.
+#	. (x) Check that its fixed using the example data.
+#	. (x) Run on the new data.
+#	. (x) Post new data, script, and write to group.
+#	. (x) Comment out previous silly entries.
+#	. (x) Rerun these ananlysis with the new data.
 
 	# Libraries
 	library(plyr)
 
 	# Data
-	data <- read.csv('~/Downloads/gm_process_output_20130312.csv')
+	data <- read.csv('~/Downloads/gm_process_output_bmh_fix_20130315.csv')
 	
-	# Remove subtest
-	data <- data[data$experiment == "growth-mindset",]
+	# Remove Subtest
+	data <- data[data$experiment != 'growth-mindset-subtest',]
 	
-	# Check percentages
-	ddply(data, .(alternative), function(df){data.frame(
-		post=sum(df$proficiencies_post*df$num_post)/nrow(df)
-	)})	
+	# Remove those with no intervention time
+	data <- data[data$intervention_time != -1,]
+	
+	# Check Number of students
+	dim(data)
+	table(data$alternative)
+	
+	# Check proviciencies
+	proficiencies <- data$num_post * data$proficiencies_post
+	mean(proficiencies, na.rm=T)
+	
+	# Proficiencies by mindset
+	control <- data$alternative %in% c(
+		'control statement', 'no header'
+	)
+	mean(proficiencies[control], na.rm=T)
+	mean(proficiencies[!control], na.rm=T)
+	
+	# Wilcox test
+	wilcox.test(
+		x=proficiencies[control],
+		y=proficiencies[!control]
+	)
+	
+	# Density plots
+	ggplot(NULL, aes(log(proficiencies, base=10), color=data$alternative)) + 
+		geom_density(adjust=5)
+		
+	# Histograms
+	ggplot(NULL, aes(proficiencies, color=data$alternative)) + 
+		geom_bar(position='fill') +
+		xlim(0,100)
 		
 # Results
 #
-# Very weird, these values are near 12, yet the ones in the dashboard
-# are near 2.5.  Something is rotten in the state of Denmark.
+# We seem to be back in buisness.
+
+
+	
+###################################################################
+# 
+# Distributional Concerns
+# 15 March 2013
+#
+# Just fixed the data we got from Jascha, time to look at it more
+# closely.
+
+	# Libraries
+	library(ggplot2)
+	library(reshape2)
+	library(plyr)
+	library(gbm)
+
+	# Data
+	url = '~/Downloads/gm_process_output_bmh_fix_20130315.csv'
+	data <- read.csv()
+	
+	# Remove Subtest
+	data <- data[data$experiment != 'growth-mindset-subtest',]
+	
+	# Remove those with no intervention time
+	data <- data[data$intervention_time != -1,]
+	
+	# Modify
+	gms_conditions <- c(
+		'growth mindset', 
+		'growth mindset + link'
+	)
+	data$is_gms <- data$alternative %in% gms_conditions
+	
+	# Factor Summaries
+	n = nrow(data)
+	n								# ~ 214 K students
+	sum(data$is_gms)/n				# ~ 22% in growth mindset exp
+
+	# Numeric Summaries
+	numeric <- laply(data, is.numeric)
+	s <- data[sample(n, 10000),numeric]
+	m <- melt(s)
+	
+	ggplot(m, aes(value)) + 
+		geom_histogram() +
+		facet_wrap(~variable, scales='free')
+	
+
+	ggplot(m[m$value > 0,], aes(log(value))) + 
+		geom_histogram() +
+		facet_wrap(~variable, scales='free')
+
+		
+# Results
+#
+# 214 K students 22% in growth mindset
+#
+# Histograms
+# http://dl.dropbox.com/u/1131693/bloodrop/Screen%20Shot%202013-03-15%20at%201.31.50%20PM.png
+#
+# Histograms (log - zeros excluded)
+# http://dl.dropbox.com/u/1131693/bloodrop/Screen%20Shot%202013-03-15%20at%201.32.44%20PM.png
+
+
+
+###################################################################
+# 
+# How low can you go?
+# 15 March 2013
+#
+# Lets try predicting proficiencies using data that we had before
+# the intervention.
+
+	# Libraries
+	library(ggplot2)
+	library(reshape2)
+	library(plyr)
+	library(gbm)
+
+	# Data
+	url = '~/Downloads/gm_process_output_bmh_fix_20130315.csv'
+	data <- read.csv()
+	
+	# Remove Subtest
+	data <- data[data$experiment != 'growth-mindset-subtest',]
+	
+	# Remove those with no intervention time
+	data <- data[data$intervention_time != -1,]
+	
+	# Modify
+	gms_conditions <- c(
+		'growth mindset', 
+		'growth mindset + link'
+	)
+	data$is_gms <- data$alternative %in% gms_conditions
+	
+	# gbm
+	s <- data[sample(nrow(data), nrow(data)),]
+	s <- s[s$proficiencies_post > 0,]
+	m <- gbm(
+		log(s$proficiencies_post) ~
+			#alternative +
+			intervention_time +
+			num_coaches +
+			max_coach_students +
+			num_pre +
+			correct_pre +
+			proficiencies_pre +
+			hints_pre +
+			median_time_pre +
+			review_pre +
+			irt_easiness_pre,
+		data=s,
+		distribution='gaussian',
+		n.trees=200,
+		interaction.depth=2,
+		shrinkage=0.1,
+		cv.folds=2
+	)
+	best.iter <- gbm.perf(m, method='cv')
+	m$cv.error[best.iter]		# 0.570
+	summary(m, n.trees=best.iter)
+	s$predicted_proficiencies <- predict(m, n.trees=best.iter, newdata=s)
+	ggplot(s, aes(log(proficiencies_post), predicted_proficiencies)) + 
+		geom_point(alpha=0.5) + 
+		geom_density2d()
+	
+	
+	# Numeric Summaries
+	s$weird <- (
+		s$predicted_proficiencies > -2.5 & 
+		log(s$proficiencies_post) < -2.5
+	) + 0
+	numeric <- laply(s, is.numeric)
+	m <- melt(s[1:1000,numeric], id.vars=c('weird'))
+	
+	ggplot(m, aes(log(value, base=10), color=factor(weird))) + 
+		geom_density() +
+		facet_wrap(~variable, scales='free')
+
+	# Uncertainty
+	m <- gbm(
+		abs(log(proficiencies_post) - predicted_proficiencies) ~
+			#alternative +
+			intervention_time +
+			num_coaches +
+			max_coach_students +
+			num_pre +
+			correct_pre +
+			proficiencies_pre +
+			hints_pre +
+			median_time_pre +
+			review_pre +
+			irt_easiness_pre +
+			predicted_proficiencies,
+		data=s,
+		distribution='gaussian',
+		n.trees=200,
+		interaction.depth=2,
+		shrinkage=0.1,
+		cv.folds=2
+	)
+	best.iter <- gbm.perf(m, method='cv')
+	m$cv.error[best.iter]		# 0.226
+	summary(m, n.trees=best.iter)
+	s$uncertainty <- predict(m, n.trees=best.iter, newdata=s)
+	ggplot(s, aes(
+		log(proficiencies_post), 
+		predicted_proficiencies, 
+		color=uncertainty > median(uncertainty)
+	)) + 
+		geom_point(alpha=0.1) + 
+		geom_density2d()
+	
+	
+	m <- glm(
+		log(proficiencies_post) ~ is_gms + predicted_proficiencies,
+		data=s[s$uncertainty > median(s$uncertainty),]
+	)
+	summary(m)
+
+	m <- glm(
+		log(proficiencies_post) ~ is_gms + predicted_proficiencies,
+		data=s[s$uncertainty < median(s$uncertainty),]
+	)
+	summary(m)
+	
+# Results
+#		
+# Log proficiency predictions
+# http://dl.dropbox.com/u/1131693/bloodrop/Screen%20Shot%202013-03-15%20at%203.08.20%20PM.png
+# *We are decent at predicting proficiency rate
+# but get really bad when the predicted outcome is near -2.5
+# for reasons I ought to investigate
+#
+#
+# Bad Predictions
+# http://dl.dropbox.com/u/1131693/bloodrop/Screen%20Shot%202013-03-15%20at%202.39.29%20PM.png
+# From these density plots we can see that the group with highly
+# variable outcomes are those who had very few exercises completed
+# prior to the intervention.  They regularly had only done 10
+# problems and it is no suprise why they are hard to predict.
+#
+#
+# Predicting Uncertainty
+# http://dl.dropbox.com/u/1131693/bloodrop/Screen%20Shot%202013-03-15%20at%203.21.57%20PM.png
+# We can employ a second gbm and predcit which data points we
+# are uncertain about.  The result a very clean dataset appropriate
+# for real analysis.
+#
+# 
+# Significance... we get none.  But At least I have some insight
+# into the data now.
+
+
+
+
+
+###################################################################
+# 
+# Number Post
+# 15 March 2013
+#
+# Lets try this same prediction, but use number post instead.
+
+	# Libraries
+	library(ggplot2)
+	library(reshape2)
+	library(plyr)
+	library(gbm)
+
+	# Data
+	url = '~/Downloads/gm_process_output_bmh_fix_20130315.csv'
+	data <- read.csv(url)
+	
+	# Remove Subtest
+	data <- data[data$experiment != 'growth-mindset-subtest',]
+	
+	# Remove those with no intervention time
+	data <- data[data$intervention_time != -1,]
+	
+	# Modify
+	gms_conditions <- c(
+		'growth mindset', 
+		'growth mindset + link'
+	)
+	data$is_gms <- data$alternative %in% gms_conditions
+	
+	# gbm
+	data$outcome <- log(data$num_post * data$proficiencies_post)
+	s <- data[sample(nrow(data), nrow(data)),]
+	s <- s[!is.na(data$outcome),]
+	m <- gbm(
+		outcome ~
+			#alternative +
+			intervention_time +
+			num_coaches +
+			max_coach_students +
+			num_pre +
+			correct_pre +
+			proficiencies_pre +
+			hints_pre +
+			median_time_pre +
+			review_pre +
+			irt_easiness_pre,
+		data=head(s, 10000),
+		distribution='gaussian',
+		n.trees=200,
+		interaction.depth=2,
+		shrinkage=0.1,
+		cv.folds=2
+	)
+	best.iter <- gbm.perf(m, method='cv')
+	m$cv.error[best.iter]		# 1.92
+	summary(m, n.trees=best.iter)
+	s$prediction <- predict(m, n.trees=best.iter, newdata=s)
+	ggplot(head(s, 10000), aes(outcome, prediction)) + 
+		geom_point(alpha=0.5) + 
+		geom_density2d()
+	
+	
+	# Uncertainty
+	m <- gbm(
+		abs(outcome - prediction) ~
+			intervention_time +
+			num_coaches +
+			max_coach_students +
+			num_pre +
+			correct_pre +
+			proficiencies_pre +
+			hints_pre +
+			median_time_pre +
+			review_pre +
+			irt_easiness_pre +
+			outcome
+			,
+		data=s,
+		distribution='gaussian',
+		n.trees=200,
+		interaction.depth=2,
+		shrinkage=0.1,
+		cv.folds=2
+	)
+	best.iter <- gbm.perf(m, method='cv')
+	m$cv.error[best.iter]		# 0.226
+	summary(m, n.trees=best.iter)
+	s$uncertainty <- predict(m, n.trees=best.iter, newdata=s)
+	ggplot(s, aes(
+		log(num_post), 
+		predicted_num, 
+		color=uncertainty > median(uncertainty)
+	)) + 
+		geom_point(alpha=0.1) + 
+		geom_density2d()
+	
+	
+	m <- glm(
+		log(num_post) ~ is_gms + predicted_num,
+		data=s[s$uncertainty > median(s$uncertainty),]
+	)
+	summary(m)
+
+	m <- glm(
+		log(num_post) ~ is_gms + predicted_num,
+		data=s[s$uncertainty < median(s$uncertainty),]
+	)
+	summary(m)
+	
+	m <- glm(
+		log(num_post) ~ is_gms + predicted_num,
+		data=s
+	)
+	summary(m)
+
+
+# Results
+#		
+# Log proficiency predictions
+# http://dl.dropbox.com/u/1131693/bloodrop/Screen%20Shot%202013-03-15%20at%203.08.20%20PM.png
+# *We are decent at predicting proficiency rate
+# but get really bad when the predicted outcome is near -2.5
+# for reasons I ought to investigate
+#
+#
+# Bad Predictions
+# http://dl.dropbox.com/u/1131693/bloodrop/Screen%20Shot%202013-03-15%20at%202.39.29%20PM.png
+# From these density plots we can see that the group with highly
+# variable outcomes are those who had very few exercises completed
+# prior to the intervention.  They regularly had only done 10
+# problems and it is no suprise why they are hard to predict.
+#
+#
+# Predicting Uncertainty
+# http://dl.dropbox.com/u/1131693/bloodrop/Screen%20Shot%202013-03-15%20at%203.21.57%20PM.png
+# We can employ a second gbm and predcit which data points we
+# are uncertain about.  The result a very clean dataset appropriate
+# for real analysis.
+#
+# 
+# Significance... we get none.  But At least I have some insight
+# into the data now.
+
