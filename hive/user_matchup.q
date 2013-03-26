@@ -15,16 +15,14 @@
 -- set hivevar:dt=2012-12-05;
 
 
-set hivevar:EXPERIMENT=growth mindset header;
-set hivevar:EXP_PARTITION=growth-mindset;
+-- to run use
+-- s3cmd put user_matchup.q s3://ka-mapreduce/tmp/growth_user_matchup.q
+-- ssh ka-analytics
+-- analytics/src/emr.py 's3://ka-mapreduce/tmp/growth_user_matchup.q'
 
---set hivevar:EXPERIMENT=growth mindset header subtest;
---set hivevar:EXP_PARTITION=growth-mindset-subtest;
+set hivevar:dt=2013-03-23;
 
-set hivevar:dt=2013-03-01;
-
--- ADD FILE s3://ka-mapreduce/code/py/bingo_alternative_selector.py;
-ADD FILE s3://ka-mapreduce/tmp/bingo_alternative_selector.py;
+ADD FILE s3://ka-mapreduce/code/py/bingo_alternative_selector.py;
 
 DROP TABLE user_experiment_info;
 CREATE EXTERNAL TABLE IF NOT EXISTS user_experiment_info(
@@ -38,16 +36,55 @@ PARTITIONED BY (experiment STRING, alternative STRING)
 LOCATION 's3://ka-mapreduce/summary_tables/user_experiment_info';
 ALTER TABLE user_experiment_info RECOVER PARTITIONS;
 
-
-
-
-
-
 alter table bingo_alternative_infop recover partitions;
-
-
 SET hive.exec.dynamic.partition=true;
 
+
+set hivevar:EXPERIMENT=growth mindset header;
+set hivevar:EXP_PARTITION=growth-mindset;
+
+INSERT OVERWRITE TABLE user_experiment_info
+PARTITION (experiment="${EXP_PARTITION}", alternative)
+SELECT 
+  get_json_object(ud.json, '$.user') AS user,
+  get_json_object(ud.json, '$.user_id') AS user_id,
+  get_json_object(ud.json, '$.user_email') AS user_email,
+  id_alt.identity, 
+  id_alt.alternative
+FROM
+(
+  -- Create a map from bingo identities to alternatives for this experiment
+  FROM (
+    SELECT
+        get_json_object(bir.json, '$.identity') AS bingo_identity,
+        get_json_object(bir.json, '$.pickled.participating_tests')
+            AS participating_tests,
+        alt.canonical_name AS canonical_name,
+        alt.hashable_name AS hashable_name,
+        alt.name AS alternative_name,
+        alt.weight AS alternative_weight
+    FROM bingo_alternative_infop alt
+    INNER JOIN GAEBingoIdentityRecord bir
+      ON True   -- Simulate a CROSS JOIN (only available on Hive v0.10+)
+    WHERE alt.canonical_name = "${EXPERIMENT}" AND alt.dt = "${dt}"
+      AND get_json_object(bir.json, '$.pickled.participating_tests') LIKE 
+        '%mindset%'
+    CLUSTER BY bingo_identity
+  ) map_output
+  SELECT TRANSFORM(map_output.*)
+  USING 'bingo_alternative_selector.py'
+  AS identity, experiment, alternative
+) id_alt
+-- now annotate the bingo id -> alternative map with UserData info
+-- TODO(jace): we should include the bingo identity in userdata_info
+INNER JOIN UserData ud
+ON id_alt.identity = get_json_object(ud.json, '$.gae_bingo_identity')
+;
+
+
+
+set hivevar:EXPERIMENT=growth mindset header subtest;
+set hivevar:EXP_PARTITION=growth-mindset-subtest;
 
 INSERT OVERWRITE TABLE user_experiment_info
 PARTITION (experiment="${EXP_PARTITION}", alternative)
