@@ -14,4 +14,12 @@ analytics/src/emr.py 's3://ka-mapreduce/tmp/scripts_combined.q'
 cd /ebs/kadata/tmp/jascha/
 rm -rf gm_ab_perproblem
 s3cmd get --recursive s3://ka-mapreduce/tmp/jascha/gm_ab_perproblem
+cd gm_ab_perproblem
 cat -v 00* | sed 's/\^A/,/g' > gm_ab_perproblem.csv
+# if the subconditions are incorrectly sorted by alphabetical rather than calling order, then do something like
+#sed -i 's/foo/bar/g' gm_ab_perproblem.csv
+gzip gm_ab_perproblem.csv
+
+# on wired local machine
+cd ~/Dropbox/growth_mindset/
+scp ka-analytics:/ebs/kadata/tmp/jascha/gm_ab_perproblem.csv.gz ./gm_ab_perproblem_[DATE].csv.gz
