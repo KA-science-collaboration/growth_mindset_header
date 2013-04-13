@@ -23,7 +23,7 @@
 -- ssh ka-analytics
 -- analytics/src/emr.py 's3://ka-mapreduce/tmp/growth_user_matchup.q'
 
-set hivevar:dt=2013-04-01;
+set hivevar:dt=2013-04-08;
 
 ADD FILE s3://ka-mapreduce/code/py/bingo_alternative_selector.py;
 
@@ -65,7 +65,8 @@ FROM
         alt.canonical_name AS canonical_name,
         alt.hashable_name AS hashable_name,
         alt.name AS alternative_name,
-        alt.weight AS alternative_weight
+        alt.weight AS alternative_weight,
+        alt.number AS alternative_number
     FROM bingo_alternative_infop alt
     INNER JOIN GAEBingoIdentityRecord bir
       ON True   -- Simulate a CROSS JOIN (only available on Hive v0.10+)
@@ -83,6 +84,7 @@ FROM
 INNER JOIN UserData ud
 ON id_alt.identity = get_json_object(ud.json, '$.gae_bingo_identity')
 ;
+
 
 
 
@@ -108,7 +110,8 @@ FROM
         alt.canonical_name AS canonical_name,
         alt.hashable_name AS hashable_name,
         alt.name AS alternative_name,
-        alt.weight AS alternative_weight
+        alt.weight AS alternative_weight,
+        alt.number AS alternative_number
     FROM bingo_alternative_infop alt
     INNER JOIN GAEBingoIdentityRecord bir
       ON True   -- Simulate a CROSS JOIN (only available on Hive v0.10+)
