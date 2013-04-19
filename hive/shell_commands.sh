@@ -23,3 +23,4 @@ gzip gm_ab_perproblem.csv
 # on wired local machine
 cd ~/Dropbox/growth_mindset/
 scp ka-analytics:/ebs/kadata/tmp/jascha/gm_ab_perproblem/gm_ab_perproblem.csv.gz ./gm_ab_perproblem_[DATE].csv.gz
+# zcat gm_ab_perproblem_[DATE].csv.gz | python2 gm_process.py > gm_process_output_[DATE].csv
