@@ -145,7 +145,7 @@ def process_user(rows, options):
     if sum(bb) > 0:
         intervention_time = np.min(aa[bb])
     else:
-        intervention_time = -1
+        intervention_time = np.inf
 
     # mark the problems done pre-intervention
     cols['pre'] = (cols['time_done'] < intervention_time)
@@ -173,9 +173,8 @@ def process_user(rows, options):
             for a in attributes:
                 if inds.shape[0] == 0:
                     # there's no data for this condition
-                    sys.stdout.write( sep )
-                    continue
-                if a == 'num':
+                    val = ""
+                elif a == 'num':
                     val = inds.shape[0]
                 elif a == 'correct':
                     val = np.mean(cols['correct'][inds])
