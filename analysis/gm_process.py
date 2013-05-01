@@ -69,7 +69,7 @@ sep = ',' # "\t"
 
 # the attributes to look at
 # irt_easiness is the bias term from an IRT model trained on all the exercises -- it gives a sense of how easy an exercise is
-attributes = ['num', 'correct', 'proficiencies', 'hints', 'median_time', 'review', 'irt_easiness']
+attributes = ['num', 'correct', 'proficiencies', 'hints', 'median_time', 'review', 'irt_easiness', 'new_exercises']
 # the subsets of the data for which to look at each of these attributes
 # pre -- before intervention
 # post -- after intervention
@@ -96,7 +96,24 @@ def print_header(options):
                 sys.stdout.write( ",%s_%s"%(a, s) )
         sys.stdout.write("\n")
 
+def remove_duplicates(rows):
+    # Remove Duplicate rows
+    unique_rows = []
+    hashes = set([])
+    for row in rows:
+        h = hash(tuple(row))
+        if h not in hashes:
+            unique_rows.append(row)
+        hashes |= set([h])
+    return unique_rows
+
+
 def process_user(rows, options):
+
+    # Remove Duplicate rows (~0.6%)
+    rows = remove_duplicates(rows)
+
+    # Get Sample size
     N = len(rows)
 
     # split data into the different columns
@@ -136,6 +153,17 @@ def process_user(rows, options):
             cols['irt_easiness'][ii] = np.nan
             continue
         cols['irt_easiness'][ii] = irt_couplings[ind,-1]
+
+    # New Exercises
+    # determine if a user has tried the exercise before, 0,
+    # or if it is new to them, 1.
+    cols['new_exercise'] = np.zeros(cols['exercise'].shape)
+    attempted = set([])
+    for ii, ex in enumerate(cols['exercise']):
+        if ex not in attempted:
+            cols['new_exercise'][ii] = 1
+            attempted |= set([ex])
+
 
     # find times
     aa = cols['time_done']
@@ -190,6 +218,8 @@ def process_user(rows, options):
                     xx = cols['irt_easiness'][inds]
                     # nansum to ignore exercises we don't know the easiness of
                     val = np.nansum(xx)/sum(np.isfinite(xx))
+                elif a == 'new_exercises':
+                    val = np.mean(cols['new_exercise'][inds])
                 else:
                     print >>sys.stderr,"invalid output column type"
 

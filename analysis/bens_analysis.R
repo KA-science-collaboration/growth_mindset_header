@@ -2526,5 +2526,90 @@
 		scale_x_log10()
 
 		
+
+
+###################################################################
+# 
+# Adding 
+# 18 March 2013
+#
+# The Khan data could use number of unique exercises attempted
+# Also, I have found in verifying my assumptions that some of the
+# data rows are repeated.  I now remove repeated rows.
+#
+# The steps
+#   (x) Remove Duplicate entries
+#   (x) Check on sample data
+#	(x) Add n unique exercises
+#	(x) Check on sample data
+#   (x) Run on full data
+#	(x) Upload to dropbox, update script, write to crew
+
+	# Data
+	cols <- c(
+			'experiment', 
+			'alternative', 
+			'identity', 
+			'num_coaches', 
+			'max_coach_students', 
+			'time_done', 
+			'dt', 
+			'exercise', 
+			'problem_type', 
+			'seed', 
+			'problem_number', 
+			'topic_mode', 
+			'review_mode', 
+			'correct', 
+			'proficiency', 
+			'hints', 
+			'time_taken'
+	)
+	examples <- read.csv(
+		'~/Downloads/gm_ab_perproblems_example_rows.csv', 
+		header=FALSE,
+		col.names=cols
+	)
+	data <- read.csv(
+		'~/Dropbox/growth_mindset (1)/gm_process_output_with_times_20130318.csv'
+	)
+	new <- read.csv('~/temp.csv')
+	
+	# Validate
+	# Prove there is only one proficiency per exercise per user
+	t <- ddply(examples, .(identity, exercise), function(df){
+		sum(df$proficiency)	
+	}) 
+	nrow(t[t$V1 > 1,])    # 22
+	head(t[t$V1 > 1,])
+	# Do'H sometimes there are two!  WTF?
+	
+	# Duplicate Rows?
+	# Looking at the data, its clear that some rows are duplicated
+	# how many?
+	mash <- do.call("paste", c(examples, sep = "..."))
+	nrow(examples) - length(unique(mash))
+	# 605 of 100,000 are duplicated rows, ~0.6%
+	
+	# Confirm they are removed
+	1e5 - sum(c(new$num_pre,new$num_post), na.rm=T)
+	# 605 gone, good!
 		
+	# Validate Unique Exercises
+	t <- ddply(examples, .(identity), function(df){
+		length(unique(df$exercise))	
+	})
+	t2 <- ddply(new, .(identity), function(df){
+		df$num_pre * df$unique_exercises_pre + 
+		df$num_post * df$unique_exercises_post
+	})
+	# Looking nicely identical!
+				
+# Results
+#
+# Went alright, surprised to find that duplicate rows exist!
+
+
+
+
 
