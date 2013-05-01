@@ -2001,9 +2001,15 @@
 	data$is_gms <- data$alternative %in% gms_conditions
 	
 	# gbm
-	data$outcome <- log(data$num_post * data$proficiencies_post)
+	data$outcome <- log(data$proficiencies_post)
+	histogram(data$outcome)
 	s <- data[sample(nrow(data), nrow(data)),]
-	s <- s[!is.na(data$outcome),]
+	s <- s[!(
+		is.na(s$outcome) | 
+		s$outcome == -Inf
+	),]
+	model_n <- nrow(s)
+	graph_n <- 10000
 	m <- gbm(
 		outcome ~
 			#alternative +
@@ -2017,7 +2023,7 @@
 			median_time_pre +
 			review_pre +
 			irt_easiness_pre,
-		data=head(s, 10000),
+		data=head(s, model_n),
 		distribution='gaussian',
 		n.trees=200,
 		interaction.depth=2,
@@ -2028,7 +2034,7 @@
 	m$cv.error[best.iter]		# 1.92
 	summary(m, n.trees=best.iter)
 	s$prediction <- predict(m, n.trees=best.iter, newdata=s)
-	ggplot(head(s, 10000), aes(outcome, prediction)) + 
+	ggplot(head(s, graph_n), aes(outcome, prediction)) + 
 		geom_point(alpha=0.5) + 
 		geom_density2d()
 	
@@ -2046,9 +2052,9 @@
 			median_time_pre +
 			review_pre +
 			irt_easiness_pre +
-			outcome
+			prediction
 			,
-		data=s,
+		data=head(s, model_n),
 		distribution='gaussian',
 		n.trees=200,
 		interaction.depth=2,
@@ -2056,61 +2062,469 @@
 		cv.folds=2
 	)
 	best.iter <- gbm.perf(m, method='cv')
-	m$cv.error[best.iter]		# 0.226
+	m$cv.error[best.iter]		# 0.230
 	summary(m, n.trees=best.iter)
 	s$uncertainty <- predict(m, n.trees=best.iter, newdata=s)
-	ggplot(s, aes(
-		log(num_post), 
-		predicted_num, 
+	ggplot(head(s, graph_n), aes(
+		outcome, 
+		prediction, 
 		color=uncertainty > median(uncertainty)
 	)) + 
 		geom_point(alpha=0.1) + 
 		geom_density2d()
-	
-	
-	m <- glm(
-		log(num_post) ~ is_gms + predicted_num,
-		data=s[s$uncertainty > median(s$uncertainty),]
-	)
-	summary(m)
 
-	m <- glm(
-		log(num_post) ~ is_gms + predicted_num,
-		data=s[s$uncertainty < median(s$uncertainty),]
-	)
-	summary(m)
 	
+	# Naive model
 	m <- glm(
-		log(num_post) ~ is_gms + predicted_num,
+		outcome ~ is_gms,
 		data=s
 	)
 	summary(m)
 
+	# Add prediction
+	m <- glm(
+		outcome ~ is_gms + prediction,
+		data=s
+	)
+	summary(m)
+	
+	# Add uncertainty
+	m <- glm(
+		outcome ~ is_gms + prediction,
+		data=s[s$uncertainty > median(s$uncertainty),]
+	)
+	summary(m)
+	
 
+
+	
 # Results
 #		
-# Log proficiency predictions
-# http://dl.dropbox.com/u/1131693/bloodrop/Screen%20Shot%202013-03-15%20at%203.08.20%20PM.png
-# *We are decent at predicting proficiency rate
-# but get really bad when the predicted outcome is near -2.5
-# for reasons I ought to investigate
-#
-#
-# Bad Predictions
-# http://dl.dropbox.com/u/1131693/bloodrop/Screen%20Shot%202013-03-15%20at%202.39.29%20PM.png
-# From these density plots we can see that the group with highly
-# variable outcomes are those who had very few exercises completed
-# prior to the intervention.  They regularly had only done 10
-# problems and it is no suprise why they are hard to predict.
-#
-#
-# Predicting Uncertainty
-# http://dl.dropbox.com/u/1131693/bloodrop/Screen%20Shot%202013-03-15%20at%203.21.57%20PM.png
-# We can employ a second gbm and predcit which data points we
-# are uncertain about.  The result a very clean dataset appropriate
-# for real analysis.
-#
+# I see little evidence that students are doing more necessarily.
+
+
+
+###################################################################
 # 
-# Significance... we get none.  But At least I have some insight
-# into the data now.
+# Intervals
+# 16 March 2013
+#
+# I'm curious what the distributions of intervals are by user.  Is
+# Median really a good way to capture this number?
+
+	# Libraries
+	library(ggplot2)
+	library(plyr)
+
+	# Data
+	url = '~/Downloads/gm_ab_perproblems_example_rows.csv'
+	data <- read.csv(url)
+	
+	# Add some names
+	names(data) <- paste0('X.', 1:17)
+	
+	# Add counts per person
+	data <- ddply(data, .(X.3), function(df){
+		df$n <- nrow(df)
+		df
+	})
+
+	# Everyone
+	g <- data[, c('X.17', 'X.3')]
+	ggplot(g, aes(X.17)) + 
+		geom_bar() + 
+		theme(legend.position="none") +
+		scale_x_log10() +
+		geom_vline(xintercept = 1, color='blue') +
+		geom_vline(xintercept = 10, color='red') +
+		geom_vline(xintercept = 60, color='blue') +
+		geom_vline(xintercept = 5*60, color='red') +
+		geom_vline(xintercept = 60*60, color='blue') +
+		geom_vline(xintercept = 60*60*24, color='blue')
+	
+# Results
+#
+# dTime Distribution
+# http://dl.dropbox.com/u/1131693/bloodrop/Screen%20Shot%202013-03-16%20at%2012.17.18%20PM.png
+# * vertical lines are 1 sec, 10 sec, 1 min, 5 min, 1 hour, 1 day
+# 
+# The distrubution is not too unusual, but thinking carefully about
+# it, one realizes that the long tail is very important.  dTime
+# greater than an hour or so represents a significant break from
+# the khan academy.  When one imagines a user, they will work in
+# spurts with long breaks.  The duration of spurts and frequency
+# of long breaks are both important indicators.
+
+
+
+###################################################################
+# 
+# Intervals
+# 16 March 2013
+#
+# I'm curious what the distributions of intervals are by user.  Is
+# Median really a good way to capture this number?
+
+	# Libraries
+	library(ggplot2)
+	library(plyr)
+
+	# Data
+	url = '~/Downloads/gm_ab_perproblems_example_rows.csv'
+	data <- read.csv(url)
+	
+	# Add some names
+	names(data) <- paste0('X.', 1:17)
+	
+	# Add counts per person
+	data <- ddply(data, .(X.3), function(df){
+		df$n <- nrow(df)
+		df
+	})
+
+	# Everyone
+	g <- data[, c('X.17', 'X.3')]
+	ggplot(g, aes(X.17)) + 
+		geom_bar() + 
+		theme(legend.position="none") +
+		scale_x_log10() +
+		geom_vline(xintercept = 1, color='blue') +
+		geom_vline(xintercept = 10, color='red') +
+		geom_vline(xintercept = 60, color='blue') +
+		geom_vline(xintercept = 5*60, color='red') +
+		geom_vline(xintercept = 60*60, color='blue') +
+		geom_vline(xintercept = 60*60*24, color='blue')
+	
+# Results
+#
+# dTime Distribution
+# http://dl.dropbox.com/u/1131693/bloodrop/Screen%20Shot%202013-03-16%20at%2012.17.18%20PM.png
+# * vertical lines are 1 sec, 10 sec, 1 min, 5 min, 1 hour, 1 day
+# 
+# The distrubution is not too unusual, but thinking carefully about
+# it, one realizes that the long tail is very important.  dTime
+# greater than an hour or so represents a significant break from
+# the khan academy.  When one imagines a user, they will work in
+# spurts with long breaks.  The duration of spurts and frequency
+# of long breaks are both important indicators.
+
+
+
+###################################################################
+# 
+# Adding the Interval
+# 18 March 2013
+#
+# Dave suggested that we should add the earliest time and last time
+# the student did anything to the aggregation script.  This is an
+# excellent suggestion and should be relatively easy, except that
+# the file will take a while to process so it will be good to work
+# with a test case first.
+#
+# The steps
+#	(x) Add columns for start and stop time in the aggreagtor
+#	(x) Run on example rows
+#	(x) Check that they match expectations
+#	(x) Run on all rows
+#	(x) Upload to dropbox, update script, write to crew
+
+	# Data
+	url = '~/Dropbox/growth_mindset (1)/gm_process_output_with_times_20130318.csv'
+	data <- read.csv(url)
+	
+	# Remove Subtest
+	data <- data[data$experiment != 'growth-mindset-subtest',]
+	
+	# Remove those with no intervention time
+	data <- data[data$intervention_time != -1,]
+			
+# Results
+#
+# Feeling good, feeling great.
+
+
+
+###################################################################
+# 
+# Exploring times
+# 19 March 2013
+#
+# I want to see how time on problem relates to other factors.
+
+
+	# Libraries
+	library(ggplot2)
+	library(plyr)
+
+	# Data
+	url = '~/Downloads/gm_ab_perproblems_example_rows.csv'
+	data <- read.csv(url)
+	
+	# Add some names
+	names(data) <- c('experiment', 'alternative', 'identity', 'num_coaches', 'max_coach_students', 'time_done', 'dt', 'exercise', 'problem_type', 'seed', 'problem_number', 'topic_mode', 'review_mode', 'correct', 'proficiency', 'hints', 'time_taken')
+	
+	# Add some features
+	data$problem <- factor(paste(data$exercise, data$problem_type))
+	data <- ddply(data, .(identity, problem), function(df){
+		cbind(
+			df, 
+			as.list(quantile(df$time_taken)),
+			n=nrow(df)
+		)
+	})
+	data <- ddply(data, .(problem), function(df){
+		cbind(
+			df, 
+			p.n=nrow(df),
+			p.median_time=median(df$time_taken, na.rm=T)
+		)
+	})
+	data <- ddply(data, .(identity), function(df){
+		cbind(
+			df, 
+			i.n=nrow(df),
+			i.median_time=median(df$time_taken, na.rm=T)
+		)
+	})
+
+
+	# Model
+	s <- data[sample(nrow(data)),]
+	trees <- 100
+	m <- gbm(
+		log(time_taken) ~ . -
+			experiment -
+			alternative - 
+			dt -
+			identity -
+			num_coaches -
+			max_coach_students -
+			time_done - 
+			exercise - 
+			problem_type -
+			seed - 
+			topic_mode -
+			review_mode - 
+			proficiency -
+			problem, 
+		distribution='gaussian',
+		data=s[s$time_taken > 0,],
+		n.trees=trees,
+		interaction.depth=3,
+		shrinkage=0.5,
+		cv.folds=2
+	)
+	best.iter <- gbm.perf(m, method='cv')
+	m$cv.error[best.iter]		# 0.45
+	summary(m, n.trees=best.iter)
+	s$p <- predict(m, n.trees=best.iter, newdata=s)
+	
+	# Prediction vs Actual
+	ggplot(s, aes(p, log(time_taken))) + 
+		geom_point() +
+		geom_density2d() 
+		
+	# Prediction by correct
+	ggplot(s, aes(factor(correct), p)) + 
+		geom_boxplot()
+		
+	# Time by identity
+	g <- s[
+		grepl('.*[A-G]$', s$identity)
+	,]	
+	ggplot(g, aes(log(time_taken), color=identity)) +
+		geom_histogram() +
+		facet_wrap(~identity)
+
+	# Time by exercise
+	g <- s[
+		grepl('^e.*', s$exercise)
+	,]	
+	table(table(g$exercise))
+	ggplot(g, aes(log(time_taken), color=exercise)) +
+		geom_histogram() + 
+		facet_wrap(~exercise)
+		
+	# Prediction by 50%
+	s$median <- s[,'50%']
+	ggplot(s, aes(log(median), log(time_taken))) + 
+		geom_point() +
+		geom_density2d(aes(color=problem_number == 1)) +
+		facet_grid(~correct)
+
+	# Prediction by 75%
+	ggplot(s, aes(log(s[,'75%']), p)) + 
+		geom_point() +
+		geom_density2d() 
+		
+# Results:
+# Time on problem can be accurately modeled by the median time on
+# an given problem per student, whether they got it correct or not
+# the problem number, and a few other factors.  Median time handles
+# most of the prediction on its own.  I imagine I can exploit this
+# fact when trying to see if intervention affects problem done.
+
+
+
+
+###################################################################
+# 
+# Like Reading?
+# 19 March 2013
+#
+# If students are reading the prompt, then presumbably this will be
+# reflected in the amount of time that they spend on an assignemnt
+# here we want to prove that.
+
+	# Libraries
+	require(data.table)
+	require(gbm)
+	require(ggplot2)
+	require(plyr)
+	require(reshape2)
+
+	# Data
+	data <- read.csv('~/temp.csv')
+	
+	# Stats
+	dim(data)
+	length(unique(data$identity))
+	head(data)
+	table(data$alternative)
+		
+	# Add factors
+	data$problem <- factor(paste(data$excercise, data$problem_type))
+	data$user_problem <- factor(paste(data$identity, data$problem))
+	data <- data.table(data)
+	aggregate <- data[,
+		as.double(median(time_taken, na.rm=T)),
+		by=user_problem
+	]
+	data <- merge(data, aggregate, by='user_problem', all.x=T)
+	experimental_conditions <- c(
+		'growth mindset', 
+		'growth mindset + link'
+	)
+	data$is_gms <- data$alternative %in% experimental_conditions
+
+	# Clean
+	data <- data[data$experiment == 'growth-mindset',]
+	
+	# Model
+	users <- sample(unique(data$identity), 10000) 
+	s <- data[data$identity %in% users,]
+	s <- s[sample(nrow(s)),]
+	trees <- 100
+	m <- gbm(
+		log(time_taken) ~ . - 
+			identity - 
+			user_problem -
+			problem - 
+			experiment -
+			dt -
+			is_gms, 
+		distribution='gaussian',
+		data=s[s$time_taken > 0,],
+		n.trees=trees,
+		interaction.depth=3,
+		shrinkage=0.5,
+		cv.folds=2
+	)
+	best.iter <- gbm.perf(m, method='cv')
+	m$cv.error[best.iter]		# 0.45
+	summary(m, n.trees=best.iter)
+
+	# Make predictions
+	temp <- function(data, new_alternative){
+		data$alternative <- new_alternative
+		data
+	}
+	s$p <- predict(m, n.trees=best.iter, newdata=s)
+	s$p_no_header <- predict(m, n.trees=best.iter, newdata=temp(s, 'no header'))
+	s$r_no_header <- s$p - s$p_no_header
+	
+	# Plot the strange ones
+	numeric <- laply(s, is.numeric)
+	rando <- sample(nrow(s), 1000)
+	s2 <- data.frame(s)
+	s2 <- s2[rando, numeric]
+	m <- melt(s2, id.vars='r_no_header')
+	ggplot(m, aes(value, color=r_no_header == 0)) + 
+		geom_density(adjust=2) + 
+		facet_wrap(~variable, scale='free') + 
+		scale_x_log10()
+	
+	
+	
+	
+	# Predict Altenative
+	users <- sample(unique(data$identity), 10000) 
+	s <- data[data$identity %in% users,]
+	s <- s[sample(nrow(s)),]
+	trees <- 100
+	m <- gbm(
+		is_gms ~ . - 
+			identity - 
+			user_problem -
+			problem - 
+			experiment -
+			dt -
+			alternative, 
+		distribution='bernoulli',
+		data=s,
+		n.trees=trees,
+		interaction.depth=3,
+		shrinkage=0.5,
+		cv.folds=2
+	)
+	best.iter <- gbm.perf(m, method='cv')
+	m$cv.error[best.iter]		# 0.89
+	summary(m, n.trees=best.iter)
+	s$p <- predict(m, n.trees=best.iter, newdata=s)
+	
+	s$accuracy <- 'unknown'
+	s$accuracy[ s$is_gm & s$p > 0] <- 'true positive'
+	s$accuracy[ s$is_gm & s$p < 0] <- 'false negative'
+	s$accuracy[!s$is_gm & s$p > 0] <- 'false positive'
+	s$accuracy[!s$is_gm & s$p < 0] <- 'true negative'
+	
+	# Plot the strange ones
+	numeric <- laply(s, is.numeric)
+	rando <- sample(nrow(s), 10000)
+	accuracy <- s$accuracy
+	s2 <- data.frame(s)
+	s2 <- s2[rando, numeric]
+	s2$accuracy <- accuracy[rando]
+	m <- melt(s2, id.vars='accuracy')
+	ggplot(m, aes(value, color=accuracy)) + 
+		geom_density(adjust=2) + 
+		facet_wrap(~variable, scale='free') + 
+		scale_x_log10()
+
+
+	# Sans interpretations
+	numeric <- laply(data, is.numeric)
+	control <- data$alternative == 'control statement'
+	growth <- data$alternative == 'growth mindset'
+	link <- data$alternative == 'growth mindset + link'
+	none <- data$alternative == 'no header'
+	n <- 10000
+	rando <- 
+		data$identity %in% sample(unique(data$identity[control]), n) |
+		data$identity %in% sample(unique(data$identity[growth]), n) |
+		data$identity %in% sample(unique(data$identity[link]), n) |
+		data$identity %in% sample(unique(data$identity[none]), n)
+		
+	alternative <- data$alternative
+	s2 <- data.frame(data)
+	s2 <- s2[rando, numeric]
+	s2$alternative <- alternative[rando]
+	m <- melt(s2, id.vars='alternative')
+	ggplot(m, aes(value, color=alternative)) + 
+		geom_density(adjust=2) + 
+		facet_wrap(~variable, scale='free') + 
+		scale_x_log10()
+
+		
+		
 
