@@ -3,50 +3,52 @@ import sys
 import re
 import optparse
 import numpy as np
+import matplotlib.pyplot as plt
+from collections import defaultdict
 
 # When the intervention was deployed
 intervention_start = 1359187200
 
 target_exercises = [
-  'adding_and_subtracting_fractions',
-  'adding_fractions',
-  'adding_fractions_with_common_denominators',
-  'changing_fractions_to_decimals_1',
-  'changing_fractions_to_percents',
-  'changing_percents_to_fractions',
-  'comparing_fractions_1',
-  'comparing_fractions_2',
-  'comparing_improper_fractions_and_mixed_numbers',
-  'converting_decimals_to_fractions_1',
-  'converting_decimals_to_fractions_2',
-  'converting_fractions_to_decimals',
-  'converting_mixed_numbers_and_improper_fractions',
-  'converting_repeating_decimals_to_fractions_1',
-  'converting_repeating_decimals_to_fractions_2',
-  'dividing_fractions',
-  'dividing_fractions_0.5',
-  'dividing_fractions_alternative',
-  'dividing_fractions_word_problems',
-  'equivalent_fractions',
-  'equivalent_fractions_2',
-  'expressing_ratios_as_fractions',
-  'fractions_cut_and_copy_1',
-  'fractions_cut_and_copy_2',
-  'fractions_on_the_number_line_1',
-  'fractions_on_the_number_line_2',
-  'fractions_on_the_number_line_3',
-  'fraction_word_problems_1',
-  'multiplying_fractions',
-  'multiplying_fractions_0.5',
-  'multiplying_fractions_word_problems',
-  'ordering_fractions',
-  'ordering_improper_fractions_and_mixed_numbers',
-  'recognizing_fractions',
-  'recognizing_fractions_0.5',
-  'simplifying_fractions',
-  'subtracting_fractions',
-  'subtracting_fractions_with_common_denominators',
-  ]
+    'adding_and_subtracting_fractions',
+    'adding_fractions',
+    'adding_fractions_with_common_denominators',
+    'changing_fractions_to_decimals_1',
+    'changing_fractions_to_percents',
+    'changing_percents_to_fractions',
+    'comparing_fractions_1',
+    'comparing_fractions_2',
+    'comparing_improper_fractions_and_mixed_numbers',
+    'converting_decimals_to_fractions_1',
+    'converting_decimals_to_fractions_2',
+    'converting_fractions_to_decimals',
+    'converting_mixed_numbers_and_improper_fractions',
+    'converting_repeating_decimals_to_fractions_1',
+    'converting_repeating_decimals_to_fractions_2',
+    'dividing_fractions',
+    'dividing_fractions_0.5',
+    'dividing_fractions_alternative',
+    'dividing_fractions_word_problems',
+    'equivalent_fractions',
+    'equivalent_fractions_2',
+    'expressing_ratios_as_fractions',
+    'fractions_cut_and_copy_1',
+    'fractions_cut_and_copy_2',
+    'fractions_on_the_number_line_1',
+    'fractions_on_the_number_line_2',
+    'fractions_on_the_number_line_3',
+    'fraction_word_problems_1',
+    'multiplying_fractions',
+    'multiplying_fractions_0.5',
+    'multiplying_fractions_word_problems',
+    'ordering_fractions',
+    'ordering_improper_fractions_and_mixed_numbers',
+    'recognizing_fractions',
+    'recognizing_fractions_0.5',
+    'simplifying_fractions',
+    'subtracting_fractions',
+    'subtracting_fractions_with_common_denominators',
+    ]
 
 
 # to access input columns
@@ -66,6 +68,7 @@ linesplit = re.compile('[,\t\x01]')
 # separator character
 sep = ',' # "\t"
 
+timehist = defaultdict(lambda: defaultdict(lambda: defaultdict(float)))
 
 # the attributes to look at
 # irt_easiness is the bias term from an IRT model trained on all the exercises -- it gives a sense of how easy an exercise is
@@ -90,7 +93,7 @@ def print_header(options):
         # no headers in Hive
         return
     if options.mode=='student':
-        sys.stdout.write( 'experiment,alternative,identity,intervention_time,start,stop,num_coaches,max_coach_students' )
+        sys.stdout.write( 'experiment,alternative,identity,intervention_time_start,start,stop,num_coaches,max_coach_students' )
         for s in subsets:
             for a in attributes:
                 sys.stdout.write( ",%s_%s"%(a, s) )
@@ -98,6 +101,9 @@ def print_header(options):
 
 def process_user(rows, options):
     N = len(rows)
+
+    if N < options.min_problems:
+        return
 
     # split data into the different columns
     cols = {}
@@ -143,19 +149,24 @@ def process_user(rows, options):
     start = min(aa)
     stop = max(aa)
     if sum(bb) > 0:
-        intervention_time = np.min(aa[bb])
+        intervention_time_start = np.min(aa[bb])
+        intervention_time_end = np.max(aa[bb])
     else:
-        intervention_time = np.inf
+        intervention_time_start = np.inf
+        intervention_time_end = np.inf
 
     # mark the problems done pre-intervention
-    cols['pre'] = (cols['time_done'] < intervention_time)
+    cols['pre'] = (cols['time_done'] < intervention_time_start)
+
+    cols['time_relative_start'] = cols['time_done'] - intervention_time_start
+    cols['time_relative_end'] = cols['time_done'] - intervention_time_end
     
     # and output the aggregated info for the user
     if options.mode=='student':
         sys.stdout.write( cols['experiment'][0] + sep )
         sys.stdout.write( cols['alternative'][0] + sep )
         sys.stdout.write( cols['identity'][0] + sep )
-        sys.stdout.write( str(intervention_time) + sep )
+        sys.stdout.write( str(intervention_time_start) + sep )
         sys.stdout.write( str(start) + sep )
         sys.stdout.write( str(stop) + sep )
         sys.stdout.write( cols['num_coaches'][0] + sep )
@@ -196,6 +207,43 @@ def process_user(rows, options):
                 sys.stdout.write( sep + str(val) )
 
         sys.stdout.write( "\n" )       
+    elif options.mode=='date':
+        alt = cols['alternative'][0]
+        #if True:
+        #    inds = np.asarray(range(cols['correct'].shape[0]))
+        for inds in range(cols['correct'].shape[0]):
+            td = 60*60*24*7 # timescale of interest
+            # bin the time relative to first intervention (on a log scale)
+            tt = cols['time_relative_start'][inds]
+            #time_start_bin = (np.exp(np.round(np.log(np.abs(tt/td)+1)))-1)*np.sign(tt)
+            time_start_bin = np.round(tt/td)
+            tt = cols['time_relative_end'][inds]
+            #time_end_bin = (np.exp(np.round(np.log(np.abs(tt/td)+1)))-1)*np.sign(tt)
+            time_end_bin = np.round(tt/td)
+            for a in attributes:
+                if a == 'num':
+                    val = 1
+                elif a == 'correct':
+                    val = np.mean(cols['correct'][inds])
+                elif a == 'proficiencies':
+                    val = np.mean(cols['proficiency'][inds])
+                elif a == 'hints':
+                    val = np.mean(cols['hints'][inds])
+                elif a == 'median_time':
+                    val = np.median(cols['time_taken'][inds])
+                elif a == 'review':
+                    val = np.mean(cols['review_mode'][inds])
+                elif a == 'irt_easiness':
+                    xx = cols['irt_easiness'][inds]
+                    # nansum to ignore exercises we don't know the easiness of
+                    # DEBUG -- not properly dealing with unknown difficulty exercises!
+                    val = 0.
+                    #if np.isfinite(xx):
+                    #    val = xx
+                else:
+                    print >>sys.stderr,"invalid output column type"
+                timehist[(a,'start')][alt][time_start_bin] += val
+                timehist[(a,'end')][alt][time_end_bin] += val
     else:
         print >>sys.stderr,"processing mode not supported yet"
 
@@ -207,32 +255,96 @@ def get_cmd_line_args():
     parser.add_option("-m", "--mode",
         help="student = one row per student, problem = one row per problem, date = one row per experiment-relative date",
         default="student")
+    parser.add_option("-p", "--post_only",
+        help="only look at post-intervention data",
+        default="false")
+    parser.add_option("-l", "--min_problems",
+        help="minimum number of problems to include a user",
+        default=0, type=int)
     options, _ = parser.parse_args()
     return options
 
 
+def make_plots():
+    print "plotting"
+    temporal_array = defaultdict(lambda: defaultdict(dict))
+
+    fig_i = 1
+
+    for a in timehist.keys():
+        for alt in timehist[a].keys():
+            times = sorted(timehist[a][alt].keys())
+            temporal_array[a][alt]['times'] = np.asarray(times)
+            v = []
+            for t in times:
+                if a[0] == 'num':
+                    v.append(timehist[a][alt][t])
+                else:
+                    v.append(timehist[a][alt][t] / timehist[('num',a[1])][alt][t])
+            temporal_array[a][alt]['value'] = np.asarray(v)
+
+        fig = plt.figure(fig_i)
+        plt.clf()
+        for alt in temporal_array[a].keys():
+            plt.plot(temporal_array[a][alt]['times'], temporal_array[a][alt]['value'], label=alt)
+        plt.xlabel('Time (weeks)')
+        plt.ylabel(str(a[0]))
+        plt.title(str(a))
+        #plt.grid()
+        plt.legend(loc='best')
+        plt.draw()
+        fig.savefig("weeks_by_user_%s_%s_%d.pdf"%(str(a[0]),str(a[1]),fig_i))
+
+        fig_i += 1
+
+
 def main():
+    plt.ion()
+
     options = get_cmd_line_args()
 
     print_header(options)
+
+    line_count = 0
 
     oldkey = None
     rows = []
     # accumulate lines, and then call process_user once per user
     for line in sys.stdin:
-        row = linesplit.split( line )
+       line_count += 1
+       # DEBUG
+       if np.mod(line_count, 1e7)==0:
+           print "line %g"%line_count
+           if options.mode=='date':
+               make_plots()
+       #if line_count > 1e7:
+       #    break
 
-        newkey = (row[idx.experiment], row[idx.alternative], row[idx.identity])
+       row = linesplit.split( line )
 
-        if newkey != oldkey and oldkey != None and len(rows) > 0:
-            # it's time to process this batch of lines
-            # if we've reached the maximum number of exercises to consider,
-            # break out and let the end of loop predict do the processing
-            process_user(rows, options)
-            rows = []     
-        oldkey = newkey
-        rows.append(row)
+       if not (options.post_only == 'false'):
+           if float(row[idx.time_done]) < (intervention_start - 60*60*24*10):
+               continue
+
+       newkey = (row[idx.experiment], row[idx.alternative], row[idx.identity])
+
+       if newkey != oldkey and oldkey != None and len(rows) > 0:
+           # it's time to process this batch of lines
+           # if we've reached the maximum number of exercises to consider,
+           # break out and let the end of loop predict do the processing
+           process_user(rows, options)
+           rows = []     
+       oldkey = newkey
+       rows.append(row)
+
     process_user(rows, options)
+
+    if options.mode=='date':
+        make_plots()
+
+        #np.save('temporal_hist', temporal_array)
+
+        plt.show()
 
 
 if __name__ == '__main__':

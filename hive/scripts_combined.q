@@ -23,7 +23,7 @@
 -- ssh ka-analytics
 -- analytics/src/emr.py 's3://ka-mapreduce/tmp/growth_user_matchup.q'
 
-set hivevar:dt=2013-04-08;
+set hivevar:dt=2013-04-30;
 
 ADD FILE s3://ka-mapreduce/code/py/bingo_alternative_selector.py;
 
