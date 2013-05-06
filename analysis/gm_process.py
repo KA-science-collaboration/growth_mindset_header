@@ -3,7 +3,6 @@ import sys
 import re
 import optparse
 import numpy as np
-import matplotlib.pyplot as plt
 from collections import defaultdict
 
 # When the intervention was deployed
@@ -69,6 +68,8 @@ linesplit = re.compile('[,\t\x01]')
 sep = ',' # "\t"
 
 timehist = defaultdict(lambda: defaultdict(lambda: defaultdict(float)))
+numhist = defaultdict(lambda: defaultdict(lambda: defaultdict(float)))
+users_per = defaultdict(float)
 
 # the attributes to look at
 # irt_easiness is the bias term from an IRT model trained on all the exercises -- it gives a sense of how easy an exercise is
@@ -127,6 +128,15 @@ def process_user(rows, options):
     for field in fields_input:
         cols[field] = np.asarray([row[idx[field]] for row in rows])
 
+    # the control statement is broken apart into sub-alternatives
+    alt = cols['alternative'][0]
+    #print alt
+    if alt == 'control statement':
+        #pass
+        return
+
+    users_per[alt] += 1
+
     cols['time_done'] = cols['time_done'].astype(float)
     cols['time_taken'] = cols['time_taken'].astype(float)
     cols['correct'] = cols['correct'].astype(bool)
@@ -160,6 +170,9 @@ def process_user(rows, options):
             continue
         cols['irt_easiness'][ii] = irt_couplings[ind,-1]
 
+    # number the problems done
+    cols['num'] = np.arange(N)
+
     # New Exercises
     # determine if a user has tried the exercise before, 0,
     # or if it is new to them, 1.
@@ -174,21 +187,28 @@ def process_user(rows, options):
     # find times
     aa = cols['time_done']
     bb = cols['exposed']
+    cc = cols['num']
     start = min(aa)
     stop = max(aa)
     if sum(bb) > 0:
         intervention_time_start = np.min(aa[bb])
         intervention_time_end = np.max(aa[bb])
+        intervention_num_start = np.min(cc[bb])
+        intervention_num_end = np.max(cc[bb])
     else:
         intervention_time_start = np.inf
         intervention_time_end = np.inf
+        intervention_num_start = np.inf
+        intervention_num_end = np.inf
 
     # mark the problems done pre-intervention
     cols['pre'] = (cols['time_done'] < intervention_time_start)
 
     cols['time_relative_start'] = cols['time_done'] - intervention_time_start
     cols['time_relative_end'] = cols['time_done'] - intervention_time_end
-    
+    cols['num_relative_start'] = cols['num'] - intervention_num_start
+    cols['num_relative_end'] = cols['num'] - intervention_num_end
+
     # and output the aggregated info for the user
     if options.mode=='student':
         sys.stdout.write( cols['experiment'][0] + sep )
@@ -238,11 +258,11 @@ def process_user(rows, options):
 
         sys.stdout.write( "\n" )       
     elif options.mode=='date':
-        alt = cols['alternative'][0]
         #if True:
         #    inds = np.asarray(range(cols['correct'].shape[0]))
         for inds in range(cols['correct'].shape[0]):
-            td = 60*60*24*7 # timescale of interest
+            td = 60*60*24*7 # timescale of interest -- weeks
+            td = 60*60*24   # timescale of interest -- days
             # bin the time relative to first intervention (on a log scale)
             tt = cols['time_relative_start'][inds]
             #time_start_bin = (np.exp(np.round(np.log(np.abs(tt/td)+1)))-1)*np.sign(tt)
@@ -250,6 +270,10 @@ def process_user(rows, options):
             tt = cols['time_relative_end'][inds]
             #time_end_bin = (np.exp(np.round(np.log(np.abs(tt/td)+1)))-1)*np.sign(tt)
             time_end_bin = np.round(tt/td)
+
+            num_start_bin = cols['num_relative_start'][inds]
+            num_end_bin = cols['num_relative_end'][inds]
+
             for a in attributes:
                 if a == 'num':
                     val = 1
@@ -270,12 +294,21 @@ def process_user(rows, options):
                     val = 0.
                     #if np.isfinite(xx):
                     #    val = xx
+                elif a == 'new_exercises':
+                    val = np.mean(cols['new_exercise'][inds])
                 else:
-                    print >>sys.stderr,"invalid output column type"
-                timehist[(a,'start')][alt][time_start_bin] += val
-                timehist[(a,'end')][alt][time_end_bin] += val
+                    print >>sys.stderr,"invalid output column type", a
+                if abs(time_start_bin) <= options.window_size:
+                    timehist[(a,'start')][alt][time_start_bin] += val
+                if abs(time_end_bin) <= options.window_size:
+                    timehist[(a,'end')][alt][time_end_bin] += val
+                if abs(num_start_bin) <= options.window_size:
+                    numhist[(a,'start')][alt][num_start_bin] += val
+                if abs(num_end_bin) <= options.window_size:
+                    numhist[(a,'end')][alt][num_end_bin] += val
     else:
-        print >>sys.stderr,"processing mode not supported yet"
+        print >>sys.stderr,"unknown processing mode"
+
 
 
 def get_cmd_line_args():
@@ -283,7 +316,7 @@ def get_cmd_line_args():
         usage="%prog [options]",
         description="Calculates some per user info for an experiment, and outputs it with different degrees of reduction.")
     parser.add_option("-m", "--mode",
-        help="student = one row per student, problem = one row per problem, date = one row per experiment-relative date",
+        help="student = one row per student, problem = one row per problem, date = plots vs experiment-relative date and plots vs experiment-relative problem_number",
         default="student")
     parser.add_option("-p", "--post_only",
         help="only look at post-intervention data",
@@ -291,46 +324,84 @@ def get_cmd_line_args():
     parser.add_option("-l", "--min_problems",
         help="minimum number of problems to include a user",
         default=0, type=int)
+    parser.add_option("-w", "--window_size",
+        help="number of time units (problems/weeks/days) away from intervention boundary to include in plots",
+        default=50, type=int)
     options, _ = parser.parse_args()
     return options
 
 
-def make_plots():
+def make_plots_date():
     print "plotting"
+
+    basename='laptop_userandproblem_timecourse_zoom'
+
+    # put this here, so code works when run remotely without X as well
+    import matplotlib.pyplot as plt
+    plt.ion()
+
     temporal_array = defaultdict(lambda: defaultdict(dict))
 
     fig_i = 1
 
-    for a in timehist.keys():
-        for alt in timehist[a].keys():
-            times = sorted(timehist[a][alt].keys())
-            temporal_array[a][alt]['times'] = np.asarray(times)
-            v = []
-            for t in times:
-                if a[0] == 'num':
-                    v.append(timehist[a][alt][t])
-                else:
-                    v.append(timehist[a][alt][t] / timehist[('num',a[1])][alt][t])
-            temporal_array[a][alt]['value'] = np.asarray(v)
+    for divisor in ['problem', 'user']:
+        for a in timehist.keys():
+            for alt in timehist[a].keys():
+                times = sorted(timehist[a][alt].keys())
+                temporal_array[a][alt]['times'] = np.asarray(times)
+                v = []
+                for t in times:
+                    if divisor == 'problem':
+                        v.append(timehist[a][alt][t] / timehist[('num',a[1])][alt][t])
+                    elif divisor == 'user':
+                        v.append(timehist[a][alt][t] / users_per[alt])
+                temporal_array[a][alt]['value'] = np.asarray(v)
 
-        fig = plt.figure(fig_i)
-        plt.clf()
-        for alt in temporal_array[a].keys():
-            plt.plot(temporal_array[a][alt]['times'], temporal_array[a][alt]['value'], label=alt)
-        plt.xlabel('Time (weeks)')
-        plt.ylabel(str(a[0]))
-        plt.title(str(a))
-        #plt.grid()
-        plt.legend(loc='best')
-        plt.draw()
-        fig.savefig("weeks_by_user_%s_%s_%d.pdf"%(str(a[0]),str(a[1]),fig_i))
+            fig = plt.figure(fig_i)
+            plt.clf()
+            for alt in temporal_array[a].keys():
+                plt.plot(temporal_array[a][alt]['times'], temporal_array[a][alt]['value'], label=alt)
+            plt.xlabel('Time (days)')
+            plt.ylabel("%s per %s"%(str(a[0]), divisor))
+            plt.title("%s relative to exposure %s"%(str(a[0]), str(a[1])))
+            plt.legend(loc='best')
+            plt.grid()
+            plt.draw()
+            fig.savefig("%s_days_%s_%s_per_%s_%d.pdf"%(basename, str(a[0]),str(a[1]),divisor,fig_i))
 
-        fig_i += 1
+            fig_i += 1
+
+
+        for a in numhist.keys():
+            for alt in numhist[a].keys():
+                times = sorted(numhist[a][alt].keys())
+                temporal_array[a][alt]['times'] = np.asarray(times)
+                v = []
+                for t in times:
+                    if divisor == 'problem':
+                        v.append(numhist[a][alt][t] / numhist[('num',a[1])][alt][t])
+                    elif divisor == 'user':
+                        v.append(numhist[a][alt][t] / users_per[alt])
+                temporal_array[a][alt]['value'] = np.asarray(v)
+
+            fig = plt.figure(fig_i)
+            plt.clf()
+            for alt in temporal_array[a].keys():
+                plt.plot(temporal_array[a][alt]['times'], temporal_array[a][alt]['value'], label=alt)
+            plt.xlabel('Problem Number')
+            plt.ylabel("%s per %s"%(str(a[0]), divisor))
+            plt.title("%s relative to exposure %s"%(str(a[0]), str(a[1])))
+            plt.legend(loc='best')
+            plt.grid()
+            plt.draw()
+            fig.savefig("%s_number_%s_%s_per_%s_%d.pdf"%(basename, str(a[0]),str(a[1]),divisor,fig_i))
+
+            fig_i += 1
+
+
 
 
 def main():
-    plt.ion()
-
     options = get_cmd_line_args()
 
     print_header(options)
@@ -344,9 +415,9 @@ def main():
        line_count += 1
        # DEBUG
        if np.mod(line_count, 1e7)==0:
-           print "line %g"%line_count
+           print "line %g"%(line_count)
            if options.mode=='date':
-               make_plots()
+               make_plots_date()
        #if line_count > 1e7:
        #    break
 
@@ -370,11 +441,10 @@ def main():
     process_user(rows, options)
 
     if options.mode=='date':
-        make_plots()
+        make_plots_date()
+        plt.show()
 
         #np.save('temporal_hist', temporal_array)
-
-        plt.show()
 
 
 if __name__ == '__main__':
