@@ -24,3 +24,4 @@ gzip gm_ab_perproblem.csv
 cd ~/Dropbox/growth_mindset/
 scp ka-analytics:/ebs/kadata/tmp/jascha/gm_ab_perproblem/gm_ab_perproblem.csv.gz ./gm_ab_perproblem_[DATE].csv.gz
 # zcat gm_ab_perproblem_[DATE].csv.gz | python2 gm_process.py > gm_process_output_[DATE].csv
+# zcat gm_ab_perproblem_130504.csv.gz | python2 ../growth_mindset_header/analysis/gm_process.py -m date -p true
