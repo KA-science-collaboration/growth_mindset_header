@@ -16,7 +16,6 @@ import re
 linesplit = re.compile('[,\t\x01]')
 
 def main():
-  print "alternative,num_pre,num_post_frac,num_post_other,correct_pre,correct_post_frac,correct_post_other"
 
   line_count = 0
   
@@ -60,6 +59,8 @@ def main():
     except:
       print >>sys.stderr, line
     #  print row
+
+  print "alternative,num_pre,num_post_frac,num_post_other,correct_pre,correct_post_frac,correct_post_other"
 
   for alt in ['no header', 'positive statement', 'science statement', 'growth mindset', 'growth mindset + link']:
     print "%s,%f,%f,%f,%f,%f,%f"%(alt,dnum[alt][0],dnum[alt][1],dnum[alt][2],dcorrect[alt][0],dcorrect[alt][1],dcorrect[alt][2])
