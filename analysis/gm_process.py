@@ -262,7 +262,7 @@ def process_user(rows, options):
         #    inds = np.asarray(range(cols['correct'].shape[0]))
         for inds in range(cols['correct'].shape[0]):
             td = 60*60*24*7 # timescale of interest -- weeks
-            td = 60*60*24   # timescale of interest -- days
+            #td = 60*60*24   # timescale of interest -- days
             # bin the time relative to first intervention (on a log scale)
             tt = cols['time_relative_start'][inds]
             #time_start_bin = (np.exp(np.round(np.log(np.abs(tt/td)+1)))-1)*np.sign(tt)
@@ -319,14 +319,14 @@ def get_cmd_line_args():
         help="student = one row per student, problem = one row per problem, date = plots vs experiment-relative date and plots vs experiment-relative problem_number",
         default="student")
     parser.add_option("-p", "--post_only",
-        help="only look at post-intervention data",
-        default="false")
+        help="only look at post-intervention data, and up to 10 days prior",
+        default=False)
     parser.add_option("-l", "--min_problems",
         help="minimum number of problems to include a user",
         default=0, type=int)
     parser.add_option("-w", "--window_size",
         help="number of time units (problems/weeks/days) away from intervention boundary to include in plots",
-        default=50, type=int)
+        default=500, type=int)
     options, _ = parser.parse_args()
     return options
 
@@ -334,17 +334,17 @@ def get_cmd_line_args():
 def make_plots_date():
     print "plotting"
 
-    basename='laptop_userandproblem_timecourse_zoom'
+    basename='userandproblem_timecourse'
 
-    # put this here, so code works when run remotely without X as well
+    # put this here, so code works when run remotely without X as well, for non plotting cases
+    # TODO - set the graphics device to work without X
     import matplotlib.pyplot as plt
     plt.ion()
-
-    temporal_array = defaultdict(lambda: defaultdict(dict))
 
     fig_i = 1
 
     for divisor in ['problem', 'user']:
+        temporal_array = defaultdict(lambda: defaultdict(dict))
         for a in timehist.keys():
             for alt in timehist[a].keys():
                 times = sorted(timehist[a][alt].keys())
@@ -361,17 +361,19 @@ def make_plots_date():
             plt.clf()
             for alt in temporal_array[a].keys():
                 plt.plot(temporal_array[a][alt]['times'], temporal_array[a][alt]['value'], label=alt)
-            plt.xlabel('Time (days)')
+            plt.xlabel('Time (weeks)')
+            #plt.xlabel('Time (days)')
             plt.ylabel("%s per %s"%(str(a[0]), divisor))
             plt.title("%s relative to exposure %s"%(str(a[0]), str(a[1])))
             plt.legend(loc='best')
             plt.grid()
             plt.draw()
-            fig.savefig("%s_days_%s_%s_per_%s_%d.pdf"%(basename, str(a[0]),str(a[1]),divisor,fig_i))
+            fig.savefig("%s_weeks_%s_%s_per_%s_%d.pdf"%(basename, str(a[0]),str(a[1]),divisor,fig_i))
 
             fig_i += 1
 
 
+        temporal_array = defaultdict(lambda: defaultdict(dict))
         for a in numhist.keys():
             for alt in numhist[a].keys():
                 times = sorted(numhist[a][alt].keys())
@@ -395,6 +397,39 @@ def make_plots_date():
             plt.grid()
             plt.draw()
             fig.savefig("%s_number_%s_%s_per_%s_%d.pdf"%(basename, str(a[0]),str(a[1]),divisor,fig_i))
+
+            fig_i += 1
+
+
+        temporal_array = defaultdict(lambda: defaultdict(dict))
+        for a in numhist.keys():
+            for alt in numhist[a].keys():
+                times = sorted(numhist[a][alt].keys())
+                temporal_array[a][alt]['times'] = np.asarray(times)
+                v = []
+                for t in times:
+                    if divisor == 'problem':
+                        v.append(numhist[a][alt][t] / numhist[('num',a[1])][alt][t])
+                    elif divisor == 'user':
+                        v.append(numhist[a][alt][t] / users_per[alt])
+                temporal_array[a][alt]['value'] = np.asarray(v)
+
+            try:
+                control_vals = temporal_array[a]['no header']['value']
+            except:
+                control_vals = 1.
+            fig = plt.figure(fig_i)
+            plt.clf()
+            for alt in temporal_array[a].keys():
+                print a, alt
+                plt.plot(temporal_array[a][alt]['times'], temporal_array[a][alt]['value']/control_vals, label=alt)
+            plt.xlabel('Problem Number')
+            plt.ylabel("%s per %s"%(str(a[0]), divisor))
+            plt.title("%s relative to exposure %s, relative to control"%(str(a[0]), str(a[1])))
+            plt.legend(loc='best')
+            plt.grid()
+            plt.draw()
+            fig.savefig("%s_number_%s_%s_per_%s_control_ratio_%d.pdf"%(basename, str(a[0]),str(a[1]),divisor,fig_i))
 
             fig_i += 1
 
@@ -423,7 +458,7 @@ def main():
 
        row = linesplit.split( line )
 
-       if not (options.post_only == 'false'):
+       if options.post_only:
            if float(row[idx.time_done]) < (intervention_start - 60*60*24*10):
                continue
 
@@ -441,6 +476,9 @@ def main():
     process_user(rows, options)
 
     if options.mode=='date':
+        # put this here, so code works when run remotely without X as well, for non plotting cases
+        # TODO - set the graphics device to work without X
+        import matplotlib.pyplot as plt
         make_plots_date()
         plt.show()
 

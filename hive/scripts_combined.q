@@ -23,7 +23,7 @@
 -- ssh ka-analytics
 -- analytics/src/emr.py 's3://ka-mapreduce/tmp/growth_user_matchup.q'
 
-set hivevar:dt=2013-04-30;
+set hivevar:dt=2013-06-01;
 
 ADD FILE s3://ka-mapreduce/code/py/bingo_alternative_selector.py;
 
@@ -173,7 +173,7 @@ FROM
       dt AS dt
      FROM problemlog pl WHERE 
       -- dt == '2013-02-05' 
-      dt > '2012-01-01'
+      dt > '2013-01-01'
      ) pl
     ON (uei.user_id = pl.user_id)
 WHERE
