@@ -421,7 +421,6 @@ def make_plots_date():
             fig = plt.figure(fig_i)
             plt.clf()
             for alt in temporal_array[a].keys():
-                print a, alt
                 plt.plot(temporal_array[a][alt]['times'], temporal_array[a][alt]['value']/control_vals, label=alt)
             plt.xlabel('Problem Number')
             plt.ylabel("%s per %s"%(str(a[0]), divisor))
