@@ -415,7 +415,7 @@ def make_plots_date():
                 temporal_array[a][alt]['value'] = np.asarray(v)
 
             if 'no header' in temporal_array[a].keys():
-                control_vals = ['no header']['value']
+                control_vals = temporal_array[a]['no header']['value']
             else:
                 control_vals = 1.
             fig = plt.figure(fig_i)
