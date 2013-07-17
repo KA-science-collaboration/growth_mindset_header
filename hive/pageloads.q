@@ -14,7 +14,7 @@ SELECT
     wrl.time_stamp as timestamp
     wrl.url as url
 FROM website_request_logs wrl
-WHERE url LIKE '%brainworkout%'
+WHERE url = 'brainworkout_1' OR url = 'brainworkout_2'
 ORDER BY timestamp
 
 INSERT OVERWRITE DIRECTORY 's3://ka-mapreduce/tmp/sitan/gm_pageloads'
