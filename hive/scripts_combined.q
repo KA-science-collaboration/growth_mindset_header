@@ -23,7 +23,11 @@
 -- ssh ka-analytics
 -- analytics/src/emr.py 's3://ka-mapreduce/tmp/growth_user_matchup.q'
 
-set hivevar:dt=2013-08-22;
+set mapred.reduce.tasks=100
+
+set hivevar:dt=2013-09-17;
+
+set hivevar:dt_problemlog_start=2013-01-01;
 
 ADD FILE s3://ka-mapreduce/code/py/bingo_alternative_selector.py;
 ADD FILE s3://ka-mapreduce/tmp/sitan/request_log_reducer.py;
@@ -45,7 +49,6 @@ LOCATION 's3://ka-mapreduce/summary_tables/mindset_experiment_info';
 
 alter table bingo_alternative_infop recover partitions;
 SET hive.exec.dynamic.partition=true;
-
 
 set hivevar:EXPERIMENT=growth mindset header;
 set hivevar:EXP_PARTITION=growth-mindset;
@@ -85,7 +88,7 @@ FROM
   SELECT TRANSFORM(map_output.*)
   USING 'bingo_alternative_selector.py'
   AS identity, experiment, alternative
-) id_alt
+) id_al
 -- now annotate the bingo id -> alternative map with UserData info
 -- TODO(jace): we should include the bingo identity in userdata_info
 INNER JOIN UserData ud
@@ -99,7 +102,7 @@ INNER JOIN
       logs.id as id,
       logs.info as info,
       logs.dt as dt,
-      logs.time_stamp
+      logs.time_stamp as time_stamp
     FROM (
         SELECT
           bingo_id as id,
@@ -107,7 +110,7 @@ INNER JOIN
           dt as dt,
           time_stamp
         FROM website_request_logs wrl
-        WHERE bingo_id IS NOT NULL and dt > "2013-08-01"
+        WHERE bingo_id IS NOT NULL and dt > ${dt_problemlog_start}
 
         UNION ALL
 
@@ -122,16 +125,20 @@ INNER JOIN
           FROM problemlog pl
           INNER JOIN userdata_info udi
           ON pl.user = udi.user
-          WHERE pl.dt > "2013-08-01" and udi.bingo_id IS NOT NULL
+          WHERE pl.dt > ${dt_problemlog_start} and udi.bingo_id IS NOT NULL
         ) plid
-    ) logs
+    ) logs ORDER BY time_stamp
   ) pwrl
+  -- why do we need both logs and pwrl?
   SELECT TRANSFORM(pwrl.*)
   USING 'request_log_reducer.py'
   AS bingo_id, json, message_text, dt
 ) alllogs
 ON id_alt.identity = alllogs.bingo_id
 ;
+
+
+
 
 
 set hivevar:EXPERIMENT=growth mindset header subtest;
@@ -194,7 +201,7 @@ INNER JOIN
           dt as dt,
           time_stamp
         FROM website_request_logs wrl
-        WHERE bingo_id IS NOT NULL and dt > "2013-08-01"
+        WHERE bingo_id IS NOT NULL and dt > ${dt_problemlog_start}
 
         UNION ALL
 
@@ -209,7 +216,7 @@ INNER JOIN
           FROM problemlog pl
           INNER JOIN userdata_info udi
           ON pl.user = udi.user
-          WHERE pl.dt > "2013-08-01" and udi.bingo_id IS NOT NULL
+          WHERE pl.dt > ${dt_problemlog_start} and udi.bingo_id IS NOT NULL
         ) plid
     ) logs
   ) pwrl
@@ -221,7 +228,7 @@ ON id_alt.identity = alllogs.bingo_id
 ;
 
 
-INSERT OVERWRITE DIRECTORY 's3://ka-mapreduce/tmp/sitan/gm_ab_perproblem'
+INSERT OVERWRITE DIRECTORY 's3://ka-mapreduce/tmp/jascha/gm_ab_perproblem'
 SELECT
   mei.experiment AS experiment,
   mei.alternative AS alternative,
