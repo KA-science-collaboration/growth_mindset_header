@@ -19,18 +19,22 @@
 
 
 -- to run use
+-- s3cmd put request_log_reducer.py s3://ka-mapreduce/tmp/jascha/request_log_reducer.py
 -- s3cmd put user_matchup.q s3://ka-mapreduce/tmp/growth_user_matchup.q
 -- ssh ka-analytics
 -- analytics/src/emr.py 's3://ka-mapreduce/tmp/growth_user_matchup.q'
 
-set mapred.reduce.tasks=100
+-- need to have a very large number of reducers, due to potential
+-- memory/cpu issues in request_log_reducer.py
+
+set mapred.reduce.tasks=1000;
 
 set hivevar:dt=2013-09-17;
 
 set hivevar:dt_problemlog_start=2013-01-01;
 
 ADD FILE s3://ka-mapreduce/code/py/bingo_alternative_selector.py;
-ADD FILE s3://ka-mapreduce/tmp/sitan/request_log_reducer.py;
+ADD FILE s3://ka-mapreduce/tmp/jascha/request_log_reducer.py;
 
 DROP TABLE mindset_experiment_info;
 CREATE EXTERNAL TABLE IF NOT EXISTS mindset_experiment_info(
@@ -127,7 +131,7 @@ INNER JOIN
           ON pl.user = udi.user
           WHERE pl.dt > ${dt_problemlog_start} and udi.bingo_id IS NOT NULL
         ) plid
-    ) logs ORDER BY time_stamp
+    ) logs DISTRIBUTE BY id
   ) pwrl
   -- why do we need both logs and pwrl?
   SELECT TRANSFORM(pwrl.*)
@@ -143,6 +147,7 @@ ON id_alt.identity = alllogs.bingo_id
 
 set hivevar:EXPERIMENT=growth mindset header subtest;
 set hivevar:EXP_PARTITION=growth-mindset-subtest;
+
 
 INSERT OVERWRITE TABLE mindset_experiment_info
 PARTITION (experiment="${EXP_PARTITION}", alternative)
@@ -179,7 +184,7 @@ FROM
   SELECT TRANSFORM(map_output.*)
   USING 'bingo_alternative_selector.py'
   AS identity, experiment, alternative
-) id_alt
+) id_al
 -- now annotate the bingo id -> alternative map with UserData info
 -- TODO(jace): we should include the bingo identity in userdata_info
 INNER JOIN UserData ud
@@ -193,7 +198,7 @@ INNER JOIN
       logs.id as id,
       logs.info as info,
       logs.dt as dt,
-      logs.time_stamp
+      logs.time_stamp as time_stamp
     FROM (
         SELECT
           bingo_id as id,
@@ -218,8 +223,9 @@ INNER JOIN
           ON pl.user = udi.user
           WHERE pl.dt > ${dt_problemlog_start} and udi.bingo_id IS NOT NULL
         ) plid
-    ) logs
+    ) logs DISTRIBUTE BY id
   ) pwrl
+  -- why do we need both logs and pwrl?
   SELECT TRANSFORM(pwrl.*)
   USING 'request_log_reducer.py'
   AS bingo_id, json, message_text, dt
