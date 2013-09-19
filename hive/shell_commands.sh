@@ -5,7 +5,7 @@ ssh ka-analytics
 
 # on ka-analytics
 s3cmd del --recursive s3://ka-mapreduce/tmp/jascha/gm_ab_perproblem
-analytics/src/emr.py --num_instances 100 's3://ka-mapreduce/tmp/growth_mindset_scripts_combined.q'
+analytics/src/emr.py --num_instances 50 's3://ka-mapreduce/tmp/growth_mindset_scripts_combined.q'
 # elastic-mapreduce --list --active
 # ssh -L 2020:[lookup ip from above]:9100 ka-analytics
 # connect to http://localhost:2020 to check status
