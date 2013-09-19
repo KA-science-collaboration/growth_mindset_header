@@ -92,7 +92,7 @@ FROM
   SELECT TRANSFORM(map_output.*)
   USING 'bingo_alternative_selector.py'
   AS identity, experiment, alternative
-) id_al
+) id_alt
 -- now annotate the bingo id -> alternative map with UserData info
 -- TODO(jace): we should include the bingo identity in userdata_info
 INNER JOIN UserData ud
@@ -184,7 +184,7 @@ FROM
   SELECT TRANSFORM(map_output.*)
   USING 'bingo_alternative_selector.py'
   AS identity, experiment, alternative
-) id_al
+) id_alt
 -- now annotate the bingo id -> alternative map with UserData info
 -- TODO(jace): we should include the bingo identity in userdata_info
 INNER JOIN UserData ud
