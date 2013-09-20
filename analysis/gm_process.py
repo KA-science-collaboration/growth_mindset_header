@@ -5,6 +5,11 @@ import optparse
 import numpy as np
 from collections import defaultdict
 
+import matplotlib
+matplotlib.use('Agg')  # no displayed figures -- need to call before loading pylab
+import matplotlib.pyplot as plt
+
+
 # When the intervention was deployed
 intervention_start = 1359187200
 
@@ -57,9 +62,8 @@ class FieldIndexer(dict):
             self.__dict__[field] = i
             self[field] = i
 
-fields_input = ['experiment', 'alternative', 'identity', 'num_coaches', 'max_coach_students', 'time_done', 'dt', 'exercise', 'problem_type', 'seed', 'problem_number', 'topic_mode', 'review_mode', 'correct', 'proficiency', 'hints', 'time_taken']
+fields_input = ['experiment', 'alternative', 'identity', 'message_text', 'num_coaches', 'max_coach_students', 'exercise', 'problem_type', 'seed', 'problem_number', 'time_done', 'topic_mode', 'review_mode', 'correct', 'proficiency', 'hints', 'time_taken', 'dt']
 idx = FieldIndexer(fields_input)
-
 
 # split on tab, ',', or \x01 so it works in Hive or via pipes on local machine
 linesplit = re.compile('[,\t\x01]')
@@ -327,19 +331,21 @@ def get_cmd_line_args():
     parser.add_option("-w", "--window_size",
         help="number of time units (problems/weeks/days) away from intervention boundary to include in plots",
         default=500, type=int)
+    parser.add_option("-b", "--base_filename",
+        help="Base filename to use when saving figures.",
+        default='', type=str)
     options, _ = parser.parse_args()
     return options
 
 
-def make_plots_date():
+def make_plots_date(options):
     print "plotting"
 
-    basename='userandproblem_timecourse'
+    basename=options.base_filename + 'userandproblem_timecourse'
 
     # put this here, so code works when run remotely without X as well, for non plotting cases
-    # TODO - set the graphics device to work without X
-    import matplotlib.pyplot as plt
-    plt.ion()
+    # TODO - set the graphics device to work without X.  Think this is fixed?
+    #plt.ion()
 
     fig_i = 1
 
@@ -451,7 +457,7 @@ def main():
        if np.mod(line_count, 1e7)==0:
            print "line %g"%(line_count)
            if options.mode=='date':
-               make_plots_date()
+               make_plots_date(options)
        #if line_count > 1e7:
        #    break
 
@@ -477,8 +483,7 @@ def main():
     if options.mode=='date':
         # put this here, so code works when run remotely without X as well, for non plotting cases
         # TODO - set the graphics device to work without X
-        import matplotlib.pyplot as plt
-        make_plots_date()
+        make_plots_date(options)
         plt.show()
 
         #np.save('temporal_hist', temporal_array)

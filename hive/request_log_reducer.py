@@ -114,15 +114,14 @@ def main():
                     diff = (kalogs[bingo_id][(
                            exercise, problem_number - 1)]["timestamp"] - 
                            plog_dict["timestamp"]).total_seconds()
+                    print '\t'.join([bingo_id, 
+                                     plog_dict["info"], 
+                                     kalogs[bingo_id][(exercise, 
+                                             problem_number - 1)]["text"],
+                                     plog_dict["dt"]])
                 except:
                     print '\t'.join([bingo_id, plog_dict["info"],
                                      "", plog_dict["dt"]])
-                    continue
-                print '\t'.join([bingo_id, 
-                                 plog_dict["info"], 
-                                 kalogs[bingo_id][(exercise, 
-                                         problem_number - 1)]["text"],
-                                 plog_dict["dt"]])
             else:
                 print '\t'.join([bingo_id, plog_dict["info"],
                                  "", plog_dict["dt"]])

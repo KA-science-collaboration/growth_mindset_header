@@ -50,8 +50,9 @@ CREATE EXTERNAL TABLE IF NOT EXISTS mindset_experiment_info(
 COMMENT 'Info about a user\'s participation in an experiment'
 PARTITIONED BY (experiment STRING, alternative STRING)
 LOCATION 's3://ka-mapreduce/summary_tables/mindset_experiment_info';
+ALTER TABLE mindset_experiment_info RECOVER PARTITIONS;
 
-alter table bingo_alternative_infop recover partitions;
+ALTER TABLE bingo_alternative_infop RECOVER PARTITIONS;
 SET hive.exec.dynamic.partition=true;
 
 set hivevar:EXPERIMENT=growth mindset header;
@@ -250,7 +251,7 @@ SELECT
   cast(get_json_object(mei.json, '$.topic_mode') = 'true' AS INT) AS topic_mode,
   cast(get_json_object(mei.json, '$.review_mode') = 'true' AS INT) AS review_mode,
   cast(get_json_object(mei.json, '$.correct') = 'true' AS INT) AS correct,
-  get_json_object(mei.json, '$.user_id') AS user_id,
+--  get_json_object(mei.json, '$.user_id') AS user_id,
   cast(get_json_object(mei.json, '$.earned_proficiency') = 'true' AS INT) AS proficiency,
   cast(get_json_object(mei.json, '$.count_hints') AS INT) AS hints,
   cast(get_json_object(mei.json, '$.time_taken') AS INT) AS time_taken,
