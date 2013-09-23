@@ -53,6 +53,7 @@ LOCATION 's3://ka-mapreduce/summary_tables/mindset_experiment_info';
 ALTER TABLE mindset_experiment_info RECOVER PARTITIONS;
 
 ALTER TABLE bingo_alternative_infop RECOVER PARTITIONS;
+ALTER TABLE GAEBingoIdentityRecordp RECOVER PARTITIONS;
 SET hive.exec.dynamic.partition=true;
 
 set hivevar:EXPERIMENT=growth mindset header;
@@ -83,9 +84,10 @@ FROM
         alt.weight AS alternative_weight,
         alt.number AS alternative_number
     FROM bingo_alternative_infop alt
-    INNER JOIN GAEBingoIdentityRecord bir
+    INNER JOIN GAEBingoIdentityRecordp bir
       ON True   -- Simulate a CROSS JOIN (only available on Hive v0.10+)
     WHERE alt.canonical_name = "${EXPERIMENT}" AND alt.dt = "${dt}"
+      AND bir.dt = "${dt}"
       AND get_json_object(bir.json, '$.pickled.participating_tests') LIKE
         '%mindset%'
     CLUSTER BY bingo_identity
@@ -175,9 +177,10 @@ FROM
         alt.weight AS alternative_weight,
         alt.number AS alternative_number
     FROM bingo_alternative_infop alt
-    INNER JOIN GAEBingoIdentityRecord bir
+    INNER JOIN GAEBingoIdentityRecordp bir
       ON True   -- Simulate a CROSS JOIN (only available on Hive v0.10+)
     WHERE alt.canonical_name = "${EXPERIMENT}" AND alt.dt = "${dt}"
+      AND bir.dt = "${dt}"
       AND get_json_object(bir.json, '$.pickled.participating_tests') LIKE
         '%mindset%'
     CLUSTER BY bingo_identity
