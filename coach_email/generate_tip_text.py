@@ -2,6 +2,38 @@ import datetime
 import hashlib
 import experiments
 import gae_bingo.identity
+import event_log
+
+
+
+def hash_to_index(max_length, salt=0):
+    """
+    Generate a pseudorandom integer less than max_length, using a hash function
+    so it's reproducible.  The hash function is based on the current week, the
+    current user, and a salt input.  For the same user, salt, and max_length the
+    random number will only change once per week, at midnight Thursday night/
+    Friday morning.
+    """
+
+    # we will hash on the year, week number and the coach id to choose the 
+    # condition
+    today = datetime.date.today()
+    # this job is run on saturday right before the week boundary, so push it 
+    # in to the future so that the week number stays the same for all  
+    # coaches even if the job takes more than a day to run
+    day_offset = datetime.timedelta(days=2)
+    hash_day = today + day_offset
+    year = hash_day.year
+    week = hash_day.isocalendar()[1]
+    identity = gae_bingo.identity.identity()
+
+    # build a hash from the week number and the user id
+    sig = hashlib.md5(str(year) + '/' + str(week) +
+                                        str(identity) + str(salt)).hexdigest()
+    # and use the hash to choose an element from the tip string dictionary
+    sig_num = int(sig, base=16)
+    sig_index = sig_num % max_length
+    return sig_index
 
 
 # all weights are given in terms of percentages
@@ -26,8 +58,24 @@ tip_strings = {
     'explanation long aloud': 'Science Tip: Recent research shows that students learn more when they explain their thinking while they are doing the steps of a math problem. Let your students know that if they get stuck, they can help themselves by explaining out loud what they are thinking, or trying to explain their thinking to another person. You can also try more frequently asking your students to provide explanations, letting them know that you’re not trying to test them, but to help them learn.',
     }
 
+# make each tip bold, and with emphasis at the beginning if appropriate
+for tip_key in tip_strings.keys():
+    tip_text = tip_strings[tip_key]
+    if tip_text is None:
+        continue
+    chunks = tip_text.split(':', 1)
+    if len(chunks) > 1:
+        chunks[0] = '<em>' + chunks[0] + ':' + '</em>'
+    tip_text = chunks[0] + chunks[1]
+    tip_text = '<b>' + tip_text + '</b>'
+    tip_strings[tip_key] = tip_text
 
 def get_tip_string():
+    """
+    Generate the tip string to be used for the intervention experiments in the
+    coach email.
+    """
+
     # get A/B test condition
     test_condition_top = experiments.CoreMetrics.ab_test(
         'coach email intervention',
@@ -39,6 +87,8 @@ def get_tip_string():
             },
         core_categories='coach')
 
+    test_condition_text = test_condition_top
+
     if test_condition_top == 'control':
         test_condition_control = experiments.CoreMetrics.ab_test(
             'coach email intervention - control subtest',
@@ -49,6 +99,7 @@ def get_tip_string():
                 'behavior specific praise': 5
                 },
             core_categories='coach')
+        test_condition_text += '.' + test_condition_control
         tip_text = tip_strings[test_condition_control]
     elif test_condition_top == 'growth mindset tip':
         test_condition_growth = experiments.CoreMetrics.ab_test(
@@ -58,6 +109,7 @@ def get_tip_string():
                 'growth framing': 15,
                 },
             core_categories='coach')
+        test_condition_text += '.' + test_condition_growth
         if test_condition_growth == 'growth submessage':
             test_condition_growth_submessage = experiments.CoreMetrics.ab_test(
                 'coach email intervention - growth subtest submessage',
@@ -67,6 +119,7 @@ def get_tip_string():
                     'growth intelligence tip': 5,
                     },
                 core_categories='coach')
+            test_condition_text += '.' + test_condition_growth_submessage
             tip_text = tip_strings[test_condition_growth_submessage]
         elif test_condition_growth == 'growth framing':
             test_condition_growth_framing = experiments.CoreMetrics.ab_test(
@@ -77,6 +130,7 @@ def get_tip_string():
                     'growth malleable nonexpert': 5,
                     },
                 core_categories='coach')
+            test_condition_text += '.' + test_condition_growth_framing
             tip_text = tip_strings[test_condition_growth_framing]
     elif test_condition_top == 'explanation effect':
         test_condition_explanation = experiments.CoreMetrics.ab_test(
@@ -87,26 +141,20 @@ def get_tip_string():
                 'explanation long aloud': 5,
                 },
             core_categories='coach')
+        test_condition_text += '.' + test_condition_explanation
         tip_text = tip_strings[test_condition_explanation]
     elif test_condition_top == 'combination condition':
-        # we will hash on the year, week number and the coach id to choose the 
-        # condition
-        today = datetime.date.today()
-        # this job is run on saturday right before the week boundary, so push it 
-        # in to the future so that the week number stays the same for all  
-        # coaches even if the job takes more than a day to run
-        day_offset = datetime.timedelta(days=2)
-        hash_day = today + day_offset
-        year = hash_day.year
-        week = hash_day.isocalendar()[1]
-        identity = gae_bingo.identity.identity()
-
-        # build a hash from the week number and the user id
-        sig = hashlib.md5(str(year) + '/' + str(week) +
-                                                    str(identity)).hexdigest()
-        # and use the hash to choose an element from the tip string dictionary
-        sig_num = int(sig, base=16)
-        sig_index = sig_num % len(tip_strings)
+        sig_index = hash_to_index(len(tip_strings), salt='combination')
+        test_condition_text += '.' + str(sig_index)
         tip_text = tip_strings[tip_strings.keys()[sig_index]]
+
+    # only show a message at all with 50% probability
+    if hash_to_index(max_length, salt='display') == 0:
+        tip_text = None
+
+    # store the tip text in the KA logs
+    event_log.log_event('x.intervention.email.test_condition',
+                                                        test_condition_text)
+    event_log.log_event('x.intervention.email.tip_text', tip_text)
 
     return tip_text
