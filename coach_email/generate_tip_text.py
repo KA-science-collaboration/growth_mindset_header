@@ -23,7 +23,7 @@ tip_strings = {
     'explanation short aloud': 'Science Tip: Recent research shows that students learn more when they are taught to pause and explain out loud why they are doing each step in a math problem.  Students do worse when they develop a habit of trying things at random when they get frustrated or confused.  Let your students know that they can learn more by pausing and explaining aloud.',
     'explanation long aloud': 'Science Tip: Recent research shows that students learn more when they explain their thinking while they are doing the steps of a math problem. Let your students know that if they get stuck, they can help themselves by explaining out loud what they are thinking, or trying to explain their thinking to another person. You can also try more frequently asking your students to provide explanations, letting them know that you\'re not trying to test them, but to help them learn.',
     }
-# make each tip bold, and with emphasis at the beginning if appropriate
+# add formatting to the tip text strings
 for tip_key in tip_strings.keys():
     tip_text = tip_strings[tip_key]
     if tip_text is None:
