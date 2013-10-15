@@ -12,7 +12,7 @@ import event_log
 tip_strings = {
     'no tip': None,
     'site tip': 'Tip: You can find more information about your students and what they are struggling with by visiting the <a href="https://www.khanacademy.org/coach">coach dashboard</a>.',
-    'positive encouragment': 'Science Tip: Recent research shows that students learn more when they are confident they can succeed at the problems they practice. When they have faith in themselves or know that others believe they can be successful, it helps them to be more motivated and not get discouraged. Help your students be confident that they are up to the task, and that you know they can do it.',
+    'positive encouragement': 'Science Tip: Recent research shows that students learn more when they are confident they can succeed at the problems they practice. When they have faith in themselves or know that others believe they can be successful, it helps them to be more motivated and not get discouraged. Help your students be confident that they are up to the task, and that you know they can do it.',
     'growth neuroscience tip': 'Science Tip: Recent research shows that students learn more after being taught <em>"Your brain is like a muscle. The more you exercise it, the stronger and smarter it gets"</em>. Let your students know how they made their brains stronger this week!',
     'growth effort tip': 'Science Tip:  Recent research shows that students learn more when they are praised for their effort and hard work.  Students learn less when they are praised for being smart.  Let your students know how hard they worked this week.',
     'growth intelligence tip': 'Science Tip: Recent research shows that students learn more when they are taught that the harder they think the smarter they get.  Students do worse if they believe that intelligence is fixed, and that no matter how hard they try they will stay as smart or dumb as they feel right now.  Let your students know how much smarter they got by thinking hard this week.',
@@ -92,7 +92,7 @@ def get_tip_string():
             alternative_params={
                 'no tip': 30,
                 'site tip': 5,
-                'positive encouragment': 5,
+                'positive encouragement': 5,
                 },
             core_categories='coach')
         test_condition_text += '.' + test_condition_control
