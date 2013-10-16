@@ -29,7 +29,7 @@
 
 set mapred.reduce.tasks=1000;
 
-set hivevar:dt=2013-09-17;
+set hivevar:dt=2013-10-10;
 
 set hivevar:dt_problemlog_start=2013-01-01;
 
@@ -58,6 +58,7 @@ SET hive.exec.dynamic.partition=true;
 
 set hivevar:EXPERIMENT=growth mindset header;
 set hivevar:EXP_PARTITION=growth-mindset;
+
 
 INSERT OVERWRITE TABLE mindset_experiment_info
 PARTITION (experiment="${EXP_PARTITION}", alternative)
@@ -130,9 +131,9 @@ INNER JOIN
             pl.json as info,
             pl.dt as dt
           FROM problemlog pl
-          INNER JOIN userdata_info udi
+          INNER JOIN userdata_info_p udi
           ON pl.user = udi.user
-          WHERE pl.dt > ${dt_problemlog_start} and udi.bingo_id IS NOT NULL
+          WHERE pl.dt > ${dt_problemlog_start} and udi.bingo_id IS NOT NULL AND udi.dt = "${dt}"
         ) plid
     ) logs DISTRIBUTE BY id
   ) pwrl
@@ -223,9 +224,9 @@ INNER JOIN
             pl.json as info,
             pl.dt as dt
           FROM problemlog pl
-          INNER JOIN userdata_info udi
+          INNER JOIN userdata_info_p udi
           ON pl.user = udi.user
-          WHERE pl.dt > ${dt_problemlog_start} and udi.bingo_id IS NOT NULL
+          WHERE pl.dt > ${dt_problemlog_start} and udi.bingo_id IS NOT NULL AND udi.dt = "${dt}"
         ) plid
     ) logs DISTRIBUTE BY id
   ) pwrl
