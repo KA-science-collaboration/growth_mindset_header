@@ -18,15 +18,8 @@
 -- set hivevar:dt=2012-08-22;
 
 
--- to run use
--- s3cmd put request_log_reducer.py s3://ka-mapreduce/tmp/jascha/request_log_reducer.py
--- s3cmd put user_matchup.q s3://ka-mapreduce/tmp/growth_user_matchup.q
--- ssh ka-analytics
--- analytics/src/emr.py 's3://ka-mapreduce/tmp/growth_user_matchup.q'
-
 -- need to have a very large number of reducers, due to potential
 -- memory/cpu issues in request_log_reducer.py
-
 set mapred.reduce.tasks=1000;
 
 set hivevar:dt=2013-10-10;

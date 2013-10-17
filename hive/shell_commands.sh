@@ -1,6 +1,7 @@
 # on local machine:
 # set dt as appropriate in scripts_combined (to a recent day)
 s3cmd put growth_mindset_scripts_combined.q s3://ka-mapreduce/tmp/growth_mindset_scripts_combined.q
+s3cmd put request_log_reducer.py s3://ka-mapreduce/tmp/jascha/request_log_reducer.py
 ssh ka-analytics
 
 # on ka-analytics
