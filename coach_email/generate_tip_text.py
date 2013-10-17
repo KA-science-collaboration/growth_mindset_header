@@ -82,7 +82,7 @@ def get_tip_string():
             'single intervention': 44,
             'combination condition': 20,
             },
-        core_categories='coach')
+        core_categories=['retention','coach'])
     test_condition_text = test_condition_top
 
     if test_condition_top == 'control':
@@ -93,7 +93,7 @@ def get_tip_string():
                 'site tip': 4,
                 'positive encouragement': 4,
                 },
-            core_categories='coach')
+            core_categories=['retention','coach'])
         test_condition_text += '.' + test_condition_control
         tip_text = tip_strings[test_condition_control]
     elif test_condition_top == 'single intervention':
@@ -105,7 +105,7 @@ def get_tip_string():
                 'long term goals': 4,
                 'deliberate practice': 4,
                 },
-            core_categories='coach')
+            core_categories=['retention','coach'])
         test_condition_text += '.' + test_condition_intervention
         if test_condition_intervention == 'growth mindset':
             test_condition_growth = experiments.CoreMetrics.ab_test(
@@ -114,7 +114,7 @@ def get_tip_string():
                     'growth submessage': 12,
                     'growth framing': 12,
                     },
-                core_categories='coach')
+                core_categories=['retention','coach'])
             test_condition_text += '.' + test_condition_growth
             if test_condition_growth == 'growth submessage':
                 test_condition_growth_submessage = \
@@ -125,7 +125,7 @@ def get_tip_string():
                         'growth effort tip': 4,
                         'growth intelligence tip': 4,
                         },
-                    core_categories='coach')
+                    core_categories=['retention','coach'])
                 test_condition_text += '.' + test_condition_growth_submessage
                 tip_text = tip_strings[test_condition_growth_submessage]
             elif test_condition_growth == 'growth framing':
@@ -136,7 +136,7 @@ def get_tip_string():
                         'growth malleable link': 4,
                         'growth malleable nonexpert': 4,
                         },
-                    core_categories='coach')
+                    core_categories=['retention','coach'])
                 test_condition_text += '.' + test_condition_growth_framing
                 tip_text = tip_strings[test_condition_growth_framing]
         elif test_condition_intervention == 'explanation effect':
@@ -147,7 +147,7 @@ def get_tip_string():
                     'explanation short aloud': 4,
                     'explanation long aloud': 4,
                     },
-                core_categories='coach')
+                core_categories=['retention','coach'])
             test_condition_text += '.' + test_condition_explanation
             tip_text = tip_strings[test_condition_explanation]
         else:
