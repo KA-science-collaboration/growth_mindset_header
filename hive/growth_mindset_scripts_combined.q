@@ -118,7 +118,7 @@ INNER JOIN
           dt as dt,
           time_stamp
         FROM website_request_logs wrl
-        WHERE bingo_id IS NOT NULL and dt > ${dt_problemlog_start}
+        WHERE bingo_id IS NOT NULL and dt > "${dt_problemlog_start}"
 
         UNION ALL
 
@@ -133,7 +133,7 @@ INNER JOIN
           FROM problemlog pl
           INNER JOIN userdata_info_p udi
           ON pl.user = udi.user
-          WHERE pl.dt > ${dt_problemlog_start} and udi.bingo_id IS NOT NULL AND udi.dt = "${dt}"
+          WHERE pl.dt > "${dt_problemlog_start}" and udi.bingo_id IS NOT NULL AND udi.dt = "${dt}"
         ) plid
     ) logs DISTRIBUTE BY id
   ) pwrl
@@ -144,9 +144,6 @@ INNER JOIN
 ) alllogs
 ON id_alt.identity = alllogs.bingo_id
 ;
-
-
-
 
 
 set hivevar:EXPERIMENT=growth mindset header subtest;
@@ -211,7 +208,7 @@ INNER JOIN
           dt as dt,
           time_stamp
         FROM website_request_logs wrl
-        WHERE bingo_id IS NOT NULL and dt > ${dt_problemlog_start}
+        WHERE bingo_id IS NOT NULL and dt > "${dt_problemlog_start}"
 
         UNION ALL
 
@@ -226,7 +223,7 @@ INNER JOIN
           FROM problemlog pl
           INNER JOIN userdata_info_p udi
           ON pl.user = udi.user
-          WHERE pl.dt > ${dt_problemlog_start} and udi.bingo_id IS NOT NULL AND udi.dt = "${dt}"
+          WHERE pl.dt > "${dt_problemlog_start}" and udi.bingo_id IS NOT NULL AND udi.dt = "${dt}"
         ) plid
     ) logs DISTRIBUTE BY id
   ) pwrl
