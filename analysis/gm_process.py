@@ -3,6 +3,7 @@ import sys
 import re
 import optparse
 import numpy as np
+import os
 from collections import defaultdict
 
 import matplotlib
@@ -75,6 +76,17 @@ timehist = defaultdict(lambda: defaultdict(lambda: defaultdict(float)))
 numhist = defaultdict(lambda: defaultdict(lambda: defaultdict(float)))
 users_per = defaultdict(float)
 
+def save_state(filename):
+    np.savez(filename, timehist=timehist, numhist=numhist, users_per=users_per)
+
+def load_state(filename):
+    global timehist, numhist, users_per
+
+    data = np.load(filename)
+    timehist = data['timehist'][()]
+    numhist = data['numhist'][()]
+    users_per = data['users_per'][()]
+
 # the attributes to look at
 # irt_easiness is the bias term from an IRT model trained on all the exercises -- it gives a sense of how easy an exercise is
 attributes = ['num', 'correct', 'proficiencies', 'hints', 'median_time', 'review', 'irt_easiness', 'new_exercises']
@@ -139,8 +151,6 @@ def process_user(rows, options):
         #pass
         return
 
-    users_per[alt] += 1
-
     cols['time_done'] = cols['time_done'].astype(float)
     cols['time_taken'] = cols['time_taken'].astype(float)
     cols['correct'] = cols['correct'].astype(bool)
@@ -159,6 +169,15 @@ def process_user(rows, options):
     #if sum(cols['exposed']) == 0:
     #    return
 
+    if options.min_pre_problems > 0:
+        # skip users for whom we don't have an exposure time
+        if sum(cols['exposed']) == 0:
+            return
+        first_exposed = np.nonzero(cols['exposed'])[0][0]
+        if first_exposed < options.min_pre_problems:
+            return
+
+    users_per[alt] += 1
 
     # look up the easiness for each of the exercises
     cols['irt_easiness'] = np.zeros(cols['exercise'].shape)
@@ -325,12 +344,15 @@ def get_cmd_line_args():
     parser.add_option("-p", "--post_only",
         help="only look at post-intervention data, and up to 10 days prior",
         default=False)
+    parser.add_option("-s", "--min_pre_problems",
+        help="minimum number of problems prior to entry into experiment to include a user",
+        default=0, type=int)
     parser.add_option("-l", "--min_problems",
         help="minimum number of problems to include a user",
         default=0, type=int)
     parser.add_option("-w", "--window_size",
         help="number of time units (problems/weeks/days) away from intervention boundary to include in plots",
-        default=500, type=int)
+        default=5000, type=int)
     parser.add_option("-b", "--base_filename",
         help="Base filename to use when saving figures.",
         default='', type=str)
@@ -366,7 +388,7 @@ def make_plots_date(options):
             fig = plt.figure(fig_i)
             plt.clf()
             for alt in temporal_array[a].keys():
-                plt.plot(temporal_array[a][alt]['times'], temporal_array[a][alt]['value'], label=alt)
+                plt.plot(temporal_array[a][alt]['times'], temporal_array[a][alt]['value'], '.', label=alt)
             plt.xlabel('Time (weeks)')
             #plt.xlabel('Time (days)')
             plt.ylabel("%s per %s"%(str(a[0]), divisor))
@@ -395,7 +417,7 @@ def make_plots_date(options):
             fig = plt.figure(fig_i)
             plt.clf()
             for alt in temporal_array[a].keys():
-                plt.plot(temporal_array[a][alt]['times'], temporal_array[a][alt]['value'], label=alt)
+                plt.plot(temporal_array[a][alt]['times'], temporal_array[a][alt]['value'], '.', label=alt)
             plt.xlabel('Problem Number')
             plt.ylabel("%s per %s"%(str(a[0]), divisor))
             plt.title("%s relative to exposure %s"%(str(a[0]), str(a[1])))
@@ -427,7 +449,7 @@ def make_plots_date(options):
             fig = plt.figure(fig_i)
             plt.clf()
             for alt in temporal_array[a].keys():
-                plt.plot(temporal_array[a][alt]['times'], temporal_array[a][alt]['value']/control_vals, label=alt)
+                plt.plot(temporal_array[a][alt]['times'], temporal_array[a][alt]['value']/control_vals, '.', label=alt)
             plt.xlabel('Problem Number')
             plt.ylabel("%s per %s"%(str(a[0]), divisor))
             plt.title("%s relative to exposure %s, relative to control"%(str(a[0]), str(a[1])))
@@ -444,6 +466,10 @@ def make_plots_date(options):
 def main():
     options = get_cmd_line_args()
 
+    d = os.path.dirname(options.base_filename)
+    if not os.path.exists(d):
+        os.makedirs(d)
+
     print_header(options)
 
     line_count = 0
@@ -455,8 +481,9 @@ def main():
        line_count += 1
        # DEBUG
        if np.mod(line_count, 1e7)==0:
-           print "line %g"%(line_count)
            if options.mode=='date':
+               print "line %g"%(line_count)
+               save_state(options.base_filename + 'state.npz')
                make_plots_date(options)
        #if line_count > 1e7:
        #    break
@@ -483,6 +510,7 @@ def main():
     if options.mode=='date':
         # put this here, so code works when run remotely without X as well, for non plotting cases
         # TODO - set the graphics device to work without X
+        save_state(options.base_filename + 'state.npz')
         make_plots_date(options)
         plt.show()
 
