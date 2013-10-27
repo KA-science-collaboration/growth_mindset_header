@@ -77,7 +77,17 @@ numhist = defaultdict(lambda: defaultdict(lambda: defaultdict(float)))
 users_per = defaultdict(float)
 
 def save_state(filename):
-    np.savez(filename, timehist=timehist, numhist=numhist, users_per=users_per)
+    l_timehist = dict(timehist)
+    for key in l_timehist.keys():
+        l_timehist[key] = dict(l_timehist[key])
+        for key2 in l_timehist[key].keys():
+            l_timehist[key][key2] = dict(l_timehist[key][key2])
+    l_numhist = dict(numhist)
+    for key in l_numhist.keys():
+        l_numhist[key] = dict(l_numhist[key])
+        for key2 in l_numhist[key].keys():
+            l_numhist[key][key2] = dict(l_numhist[key][key2])
+    np.savez(filename, timehist=dict(l_timehist), numhist=dict(l_numhist), users_per=dict(users_per))
 
 def load_state(filename):
     global timehist, numhist, users_per
