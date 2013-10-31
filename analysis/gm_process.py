@@ -77,16 +77,16 @@ numhist = defaultdict(lambda: defaultdict(lambda: defaultdict(float)))
 users_per = defaultdict(float)
 
 def save_state(filename):
-    l_timehist = dict(timehist)
+    l_timehist = dict(timehist).copy()
     for key in l_timehist.keys():
-        l_timehist[key] = dict(l_timehist[key])
+        l_timehist[key] = dict(l_timehist[key]).copy()
         for key2 in l_timehist[key].keys():
-            l_timehist[key][key2] = dict(l_timehist[key][key2])
-    l_numhist = dict(numhist)
+            l_timehist[key][key2] = dict(l_timehist[key][key2]).copy()
+    l_numhist = dict(numhist).copy()
     for key in l_numhist.keys():
-        l_numhist[key] = dict(l_numhist[key])
+        l_numhist[key] = dict(l_numhist[key]).copy()
         for key2 in l_numhist[key].keys():
-            l_numhist[key][key2] = dict(l_numhist[key][key2])
+            l_numhist[key][key2] = dict(l_numhist[key][key2]).copy()
     np.savez(filename, timehist=dict(l_timehist), numhist=dict(l_numhist), users_per=dict(users_per))
 
 def load_state(filename):
@@ -366,6 +366,9 @@ def get_cmd_line_args():
     parser.add_option("-b", "--base_filename",
         help="Base filename to use when saving figures.",
         default='', type=str)
+    parser.add_option("-n", "--npz_load",
+        help="Load processed datat from npz file rather than repopulating.",
+        default='', type=str)
     options, _ = parser.parse_args()
     return options
 
@@ -419,7 +422,11 @@ def make_plots_date(options):
                 v = []
                 for t in times:
                     if divisor == 'problem':
-                        v.append(numhist[a][alt][t] / numhist[('num',a[1])][alt][t])
+                        try: #DEBUG
+                            rat = numhist[a][alt][t] / numhist[('num',a[1])][alt][t]
+                        except:
+                            rat = 1.
+                        v.append(rat)
                     elif divisor == 'user':
                         v.append(numhist[a][alt][t] / users_per[alt])
                 temporal_array[a][alt]['value'] = np.asarray(v)
@@ -440,20 +447,31 @@ def make_plots_date(options):
 
 
         temporal_array = defaultdict(lambda: defaultdict(dict))
+        times = []
         for a in numhist.keys():
             for alt in numhist[a].keys():
-                times = sorted(numhist[a][alt].keys())
+                for t in numhist[a][alt].keys():
+                    times.append(t)
+        times = sorted(times)
+        times = np.unique(times)
+        for a in numhist.keys():
+            for alt in numhist[a].keys():
                 temporal_array[a][alt]['times'] = np.asarray(times)
                 v = []
                 for t in times:
                     if divisor == 'problem':
-                        v.append(numhist[a][alt][t] / numhist[('num',a[1])][alt][t])
+                        try: #DEBUG
+                            rat = numhist[a][alt][t] / numhist[('num',a[1])][alt][t]
+                        except:
+                            rat = 1.
+                        v.append(rat)
                     elif divisor == 'user':
                         v.append(numhist[a][alt][t] / users_per[alt])
                 temporal_array[a][alt]['value'] = np.asarray(v)
 
             if 'no header' in temporal_array[a].keys():
                 control_vals = temporal_array[a]['no header']['value']
+                control_vals[control_vals == 0] = 1 #DEBUG
             else:
                 control_vals = 1.
             fig = plt.figure(fig_i)
@@ -475,6 +493,10 @@ def make_plots_date(options):
 
 def main():
     options = get_cmd_line_args()
+
+    if not options.npz_load == '':
+        load_and_plot(options)
+        return
 
     d = os.path.dirname(options.base_filename)
     if not os.path.exists(d):
@@ -526,6 +548,9 @@ def main():
 
         #np.save('temporal_hist', temporal_array)
 
+def load_and_plot(options):
+    load_state(options.npz_load)
+    make_plots_date(options)
 
 if __name__ == '__main__':
     main()
