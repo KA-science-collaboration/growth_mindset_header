@@ -15,6 +15,13 @@ from collections import defaultdict
 import datetime as datet
 from datetime import datetime
 import sys
+import urllib
+
+import re
+
+# split on tab or \x01 so it works in Hive or via pipes on local machine
+linesplit = re.compile('[\t\x01]')
+
 
 
 def main():
@@ -27,9 +34,11 @@ def main():
     plogs = defaultdict(dict)
     for line in sys.stdin:
         try:
-            bingo_id, info, dt, timestamp = line.rstrip('\n').split('\t')
+            bingo_id, info, dt, timestamp = linesplit.split(line.rstrip('\n'))
         except:
             continue
+
+        bingo_id = urllib.unquote(bingo_id)
 
         # NOTE: the info variable for a kalog is a string like:
         # bingo.param:assessment_problem_attempt_binary
@@ -74,6 +83,8 @@ def main():
             text_start += len('x.mindset.message_text') + 1
             text_end = info.find(';', text_start)
             text = info[text_start:text_end]
+            text = urllib.unquote(text)
+
 
             total_done_start += len('x.mindset.total_done') + 1
             total_done_end = info.find(';', total_done_start)
@@ -83,6 +94,7 @@ def main():
             kalog_exercise_name_end = info.find(';', kalog_exercise_name_start)
             kalog_exercise_name = info[kalog_exercise_name_start:
                                        kalog_exercise_name_end]
+            kalog_exercise_name = urllib.unquote(kalog_exercise_name)
 
             kalogs[bingo_id][(kalog_exercise_name, total_done)] = {
                 "text": text,
@@ -93,12 +105,17 @@ def main():
         elif (problem_number_start > -1 and plog_exercise_name_start > -1):
             problem_number_start += len('"problem_number": ')
             problem_number_end = info.find(',', problem_number_start)
+            if problem_number_end == -1:
+                problem_number_end = info.find('}', problem_number_start)
             problem_number = int(info[problem_number_start:problem_number_end])
 
             plog_exercise_name_start += len('"exercise": ')
-            plog_exercise_name_end = info.find('}', plog_exercise_name_start)
+            plog_exercise_name_end = info.find(',', plog_exercise_name_start)
+            if plog_exercise_name_end == -1:
+                plog_exercise_name_end = info.find('}', plog_exercise_name_start)
             plog_exercise_name = info[plog_exercise_name_start:
                                       plog_exercise_name_end]
+            plog_exercise_name = plog_exercise_name.strip('"')
 
             plogs[bingo_id][(plog_exercise_name, problem_number)] = {
                 "info": info,
@@ -108,8 +125,7 @@ def main():
 
     for bingo_id, plog in plogs.iteritems():
         for (exercise, problem_number), plog_dict in plog.iteritems():
-            exercise = exercise.strip('"')
-            if ((exercise, problem_number - 1) in kalogs[bingo_id].keys()):
+            if ((exercise, problem_number - 1,) in kalogs[bingo_id].keys()):
                 try:
                     diff = (kalogs[bingo_id][(
                            exercise, problem_number - 1)]["timestamp"] - 
@@ -118,13 +134,16 @@ def main():
                                      plog_dict["info"], 
                                      kalogs[bingo_id][(exercise, 
                                              problem_number - 1)]["text"],
-                                     plog_dict["dt"]])
-                except:
+                                     plog_dict["dt"], "%f"%diff])
+                except Exception,e:
                     print '\t'.join([bingo_id, plog_dict["info"],
-                                     "", plog_dict["dt"]])
+                                     "", plog_dict["dt"], '0'])
             else:
+                #print kalogs.keys()
+                #print kalogs[bingo_id].keys()
+                #print (exercise, problem_number - 1,)
                 print '\t'.join([bingo_id, plog_dict["info"],
-                                 "", plog_dict["dt"]])
+                                 "", plog_dict["dt"], '0'])
 
 
 if __name__ == '__main__':
