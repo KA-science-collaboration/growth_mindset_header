@@ -19,18 +19,29 @@ cd /ebs/modeling/jascha/header_text
 rm -rf gm_ab_perproblem
 s3cmd get --recursive s3://ka-mapreduce/tmp/jascha/gm_ab_perproblem
 cd gm_ab_perproblem
-cat -v 00* | sed 's/,//g' > gm_ab_perproblem_temp.csv
-cat gm_ab_perproblem_temp.csv | sed 's/\^A/,/g' > gm_ab_perproblem.csv
-rm gm_ab_perproblem_temp.csv
-# if the subconditions are incorrectly sorted by alphabetical rather than calling order, then do something like
-#sed -i 's/foo/bar/g' gm_ab_perproblem.csv
+cat -v 00* | sed 's/,//g' | sed 's/\^A/,/g' > gm_ab_perproblem.csv
 gzip gm_ab_perproblem.csv
 
-# on wired local machine
-export gmdate=[DATE STRING]
+cd ..
+s3cmd get --recursive s3://ka-mapreduce/tmp/jascha/brainworkout
+cd brainworkout
+cat -v 00* | sed 's/,//g' | sed 's/\^A/,/g' > brainworkout.csv
+gzip brainworkout.csv
 
-cd /data/tmp
-scp ka-analytics:/ebs/modeling/jascha/gm_ab_perproblem/gm_ab_perproblem.csv.gz ./gm_ab_perproblem_${gmdate}.csv.gz
+# cat -v 00* | sed 's/,//g' > gm_ab_perproblem_temp.csv
+# cat gm_ab_perproblem_temp.csv | sed 's/\^A/,/g' > gm_ab_perproblem.csv
+# rm gm_ab_perproblem_temp.csv
+# if the subconditions are incorrectly sorted by alphabetical rather than calling order, then do something like
+#sed -i 's/foo/bar/g' gm_ab_perproblem.csv
+
+# on wired local machine
+
+export gmdate=[DATE STRING]
+cd /data/growth
+mkdir ${gmdate}
+cd ${gmdate}
+scp ka-analytics:/ebs/modeling/jascha/header_text/brainworkout/brainworkout.csv.gz ./brainworkout_${gmdate}.csv.gz
+scp ka-analytics:/ebs/modeling/jascha/header_text/gm_ab_perproblem/gm_ab_perproblem.csv.gz ./gm_ab_perproblem_${gmdate}.csv.gz
 #scp ka-analytics:/ebs/kadata/tmp/jascha/gm_ab_perproblem/gm_ab_perproblem.csv.gz ./gm_ab_perproblem.csv.gz
 cat gm_ab_perproblem_${gmdate}.csv.gz | openssl enc -aes-256-cbc -e > gm_ab_perproblem_${gmdate}.csv.gz.aes
 
@@ -52,10 +63,13 @@ cat gm_process_output_alreadyactive_${gmdate}.csv | python2 ../growth_mindset_he
 
 
 
-# random incantations
+## random incantations -- scratch space below here
 # drop a column from csv
+
+cat gm_process_output_2013-10-10.csv | python gm_post_vs_pre.py
+
 zcat gm_ab_perproblem_userid.csv.gz | cut -d , -f 1-14,16- > gm_ab_perproblem.csv
 gzip gm_ab_perproblem.csv
 
-
 zcat gm_ab_perproblem.csv.gz | head | cut -d , -f 1-14,16-
+
