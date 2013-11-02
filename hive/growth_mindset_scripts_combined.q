@@ -272,12 +272,16 @@ ORDER BY
 INSERT OVERWRITE DIRECTORY 's3://ka-mapreduce/tmp/jascha/brainworkout'
 SELECT
   bingo_id as id,
-  url,
+  time_stamp as time_stamp,
+  url as url,
   kalog as info,
-  dt as dt,
-  time_stamp
+  dt as dt
 FROM website_request_logs wrl
 WHERE bingo_id IS NOT NULL AND dt > "${dt_problemlog_start}"
   AND kalog LIKE '%pageload%'
   AND url LIKE '%brainworkout%'
+ORDER BY
+  id,
+  time_stamp,
+  url
 ;
