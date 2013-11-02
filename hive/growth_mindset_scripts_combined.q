@@ -22,7 +22,7 @@
 -- memory/cpu issues in request_log_reducer.py
 set mapred.reduce.tasks=1000;
 
-set hivevar:dt=2013-10-10;
+set hivevar:dt=2013-10-20;
 
 set hivevar:dt_problemlog_start=2013-01-01;
 
@@ -111,7 +111,8 @@ INNER JOIN
           dt as dt,
           time_stamp
         FROM website_request_logs wrl
-        WHERE bingo_id IS NOT NULL and dt > "${dt_problemlog_start}"
+        WHERE bingo_id IS NOT NULL and dt > "${dt_problemlog_start}" 
+        AND kalog LIKE '%mindset%'
 
         UNION ALL
 
@@ -202,6 +203,7 @@ INNER JOIN
           time_stamp
         FROM website_request_logs wrl
         WHERE bingo_id IS NOT NULL and dt > "${dt_problemlog_start}"
+        AND kalog LIKE '%mindset%'
 
         UNION ALL
 
@@ -263,4 +265,19 @@ ORDER BY
   alternative,
   identity,
   time_done
+;
+
+
+
+INSERT OVERWRITE DIRECTORY 's3://ka-mapreduce/tmp/jascha/brainworkout'
+SELECT
+  bingo_id as id,
+  url,
+  kalog as info,
+  dt as dt,
+  time_stamp
+FROM website_request_logs wrl
+WHERE bingo_id IS NOT NULL AND dt > "${dt_problemlog_start}"
+  AND kalog LIKE '%pageload%'
+  AND url LIKE '%brainworkout%'
 ;
