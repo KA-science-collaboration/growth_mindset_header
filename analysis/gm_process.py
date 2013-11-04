@@ -4,6 +4,7 @@ import re
 import optparse
 import numpy as np
 import os
+import itertools
 from collections import defaultdict
 
 import matplotlib
@@ -378,9 +379,7 @@ def make_plots_date(options):
 
     basename=options.base_filename + 'userandproblem_timecourse'
 
-    # put this here, so code works when run remotely without X as well, for non plotting cases
-    # TODO - set the graphics device to work without X.  Think this is fixed?
-    #plt.ion()
+    marker = itertools.cycle(('v', '+', 's', 'o', '*')) 
 
     fig_i = 1
 
@@ -401,7 +400,7 @@ def make_plots_date(options):
             fig = plt.figure(fig_i)
             plt.clf()
             for alt in temporal_array[a].keys():
-                plt.plot(temporal_array[a][alt]['times'], temporal_array[a][alt]['value'], '.', label=alt)
+                plt.plot(temporal_array[a][alt]['times'], temporal_array[a][alt]['value'], marker=marker.next(), linestyle='.', label=alt)
             plt.xlabel('Time (weeks)')
             #plt.xlabel('Time (days)')
             plt.ylabel("%s per %s"%(str(a[0]), divisor))
@@ -434,7 +433,7 @@ def make_plots_date(options):
             fig = plt.figure(fig_i)
             plt.clf()
             for alt in temporal_array[a].keys():
-                plt.plot(temporal_array[a][alt]['times'], temporal_array[a][alt]['value'], '.', label=alt)
+                plt.plot(temporal_array[a][alt]['times'], temporal_array[a][alt]['value'], marker=marker.next(), linestyle='.', label=alt)
             plt.xlabel('Problem Number')
             plt.ylabel("%s per %s"%(str(a[0]), divisor))
             plt.title("%s relative to exposure %s"%(str(a[0]), str(a[1])))
@@ -477,7 +476,7 @@ def make_plots_date(options):
             fig = plt.figure(fig_i)
             plt.clf()
             for alt in temporal_array[a].keys():
-                plt.plot(temporal_array[a][alt]['times'], temporal_array[a][alt]['value']/control_vals, '.', label=alt)
+                plt.plot(temporal_array[a][alt]['times'], temporal_array[a][alt]['value']/control_vals, marker=marker.next(), linestyle='.', label=alt)
             plt.xlabel('Problem Number')
             plt.ylabel("%s per %s"%(str(a[0]), divisor))
             plt.title("%s relative to exposure %s, relative to control"%(str(a[0]), str(a[1])))
@@ -498,9 +497,10 @@ def main():
         load_and_plot(options)
         return
 
-    d = os.path.dirname(options.base_filename)
-    if not os.path.exists(d):
-        os.makedirs(d)
+    if not options.base_filename == '':
+        d = os.path.dirname(options.base_filename)
+        if not os.path.exists(d):
+            os.makedirs(d)
 
     print_header(options)
 
